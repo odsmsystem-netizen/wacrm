@@ -91,7 +91,9 @@ Open <http://localhost:3000>. You'll be redirected to `/login` (or
 `/dashboard` if already signed in).
 
 Prefer containers? See [docs/docker.md](./docs/docker.md) for the
-Dockerfile + Docker Compose setup.
+Dockerfile + Docker Compose setup, or
+[docs/easypanel.md](./docs/easypanel.md) to deploy that same
+Dockerfile on Easypanel.
 
 ## 🚀 Deploy on Hostinger (recommended)
 

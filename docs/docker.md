@@ -6,6 +6,9 @@ runs as a non-root user) and a `docker-compose.yml` with a single
 (or self-hosted) Supabase project via env vars; no database container
 is included.
 
+Deploying to Easypanel? It builds this same `Dockerfile` but
+ignores `docker-compose.yml` — see [easypanel.md](easypanel.md).
+
 ## Quick start
 
 1. Copy the env template and fill it in:
@@ -33,6 +36,13 @@ is included.
 
 ## Build-time vs runtime variables
 
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
+  `NEXT_PUBLIC_SITE_URL` are **required at build time** — the build
+  fails with an explicit error naming the missing ones rather than
+  producing an image that breaks in the browser. `NEXT_PUBLIC_SITE_URL`
+  is optional for `next start` but required here: the cron endpoints
+  and background workers generate links with no incoming request whose
+  origin they could borrow.
 - `NEXT_PUBLIC_*` variables are **inlined into the client bundle at
   build time**. They are passed as Docker build args by
   `docker-compose.yml`. If you change any of them, rebuild:
@@ -48,6 +58,7 @@ is included.
 docker build \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://crm.example.com \
   -t wacrm .
 
 docker run -d --env-file .env.local -e PORT=3000 -p 3000:3000 wacrm

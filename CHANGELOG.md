@@ -9,6 +9,43 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [Unreleased]
+
+> **Build config change:** container builds now require
+> `NEXT_PUBLIC_SITE_URL` as a build argument. If you build the image
+> yourself (`docker build`, `docker compose up --build`, or a PaaS that
+> builds the Dockerfile), add it to `.env.local` / your panel before
+> your next build — otherwise the build stops with an explicit error.
+> Nothing changes for `npm run build` + `npm start`.
+
+### Added
+
+- **Easypanel deployment guide** (`docs/easypanel.md`). Step-by-step
+  panel configuration for deploying the repo's existing `Dockerfile`:
+  which variables reach the build versus the running container, why the
+  server-only secrets stay out of the image, and which changes need a
+  rebuild rather than a restart.
+- **Build-time guard for required public variables.** The Docker build
+  now fails immediately, naming the missing variables, instead of
+  producing an image that looks healthy and breaks in the user's
+  browser. `NEXT_PUBLIC_*` values are inlined into the client bundle at
+  build time and the Supabase browser client reads them behind a
+  non-null assertion, so an empty value used to survive all the way to
+  sign-in.
+- **`HEALTHCHECK` in the image.** Previously only `docker-compose.yml`
+  defined one, so plain `docker run` and PaaS builders — which never
+  read our Compose file — had no health signal.
+
+### Changed
+
+- **`NEXT_PUBLIC_SITE_URL` is now required to build the image.** It
+  stays optional for `next start`, where routes derive their origin
+  from the incoming request. A container has no such fallback for the
+  cron endpoints and background workers, which build links with no
+  request to borrow an origin from. `docker-compose.yml` no longer
+  defaults it to an empty string, so an unset value fails loudly rather
+  than silently shipping a broken bundle.
+
 ## [0.8.1] — 2026-07-10
 
 Fixes inbound chats fragmenting into multiple threads for the same
