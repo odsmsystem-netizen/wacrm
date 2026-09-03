@@ -187,13 +187,25 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">
-              {t("title")}
-            </span>
+          <Link href="/dashboard" className="flex items-center" aria-label={t("title")}>
+            {/*
+              The brand mark carries the company name inside the artwork,
+              so the title text that used to sit beside it would read
+              twice. It stays as the link's aria-label — screen readers
+              still announce where this goes.
+
+              Plain <img>, not next/image: nothing else in this codebase
+              uses the optimiser, and the Docker image runs the
+              standalone output, where next/image would drag in sharp
+              for an asset that is already the right size on disk.
+            */}
+            <img
+              src="/ambar-logo.png"
+              alt={t("title")}
+              width={421}
+              height={172}
+              className="h-7 w-auto"
+            />
           </Link>
           <button
             type="button"
