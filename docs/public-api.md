@@ -211,6 +211,20 @@ and `?contact_id=`. Each conversation embeds its contact + tags.
 Read one conversation. Scope: `conversations:read`. `404` if it belongs
 to another account.
 
+Two fields matter to an agent that answers through this API, and they
+mean different things — check both before replying:
+
+- `assigned_agent_id` — non-null when a human owns the thread.
+- `ai_autoreply_disabled` — `true` when auto-reply is paused *on this
+  thread*, because someone hit "Take over" in the inbox or a bot handed
+  off. An agent can be paused without the thread being assigned, so this
+  is not redundant with the field above.
+
+Neither is included in the `message.received` webhook payload, so an
+agent that replies to inbound messages should read the conversation
+first. That call also returns the contact's `phone`, which the webhook
+omits too.
+
 ### `GET /api/v1/conversations/{id}/messages`
 
 List a conversation's messages, newest first. Scope: `messages:read`.
@@ -373,6 +387,40 @@ reconcile with the read endpoints when it matters.
 resolve to a public address — requests to `localhost`, private/RFC1918
 ranges, link-local (incl. cloud metadata `169.254.169.254`), and similar
 internal targets are refused at delivery time.
+
+## Answering with an external agent
+
+You can let an agent that runs outside wacrm handle inbound replies: it
+learns about a message (via `message.received` or by polling), decides,
+and answers with `POST /api/v1/messages`. wacrm never calls it, so
+there is nothing to register — but turn the **native** auto-reply off in
+**AI Agents → Setup**, or the customer gets two answers to one message.
+
+Set `EXTERNAL_AGENT_NAME` (runtime, optional) to the agent's name so the
+inbox knows it exists:
+
+```bash
+EXTERNAL_AGENT_NAME="Claudia"
+```
+
+Without it the inbox assumes nothing is auto-replying and hides the
+per-conversation **Take over** banner — which is the only control an
+agent has to stop a bot mid-thread. With it, the banner appears and
+uses the name instead of "AI assistant".
+
+"Take over" sets `ai_autoreply_disabled` on that conversation (and
+assigns it to whoever clicked). Your agent should read that flag, and
+`assigned_agent_id`, from `GET /api/v1/conversations/{id}` before
+replying — see that endpoint for what the two mean.
+
+Two limits worth knowing up front:
+
+- **Nothing external can assign or close a conversation.** The v1
+  conversation endpoints are read-only; the route behind "Take over" is
+  session-authenticated dashboard-only.
+- **The 24-hour window is not checked here.** Outside it Meta rejects
+  the send and you get `meta_error` with `502`; parse the message for
+  Meta's own code if you need to tell that apart from other failures.
 
 ## Roadmap
 

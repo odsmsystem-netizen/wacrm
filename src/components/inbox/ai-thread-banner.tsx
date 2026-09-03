@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/use-auth";
 // ------------------------------------------------------------
 interface AiAccountStatus {
   autoReplyOn: boolean;
+  /** Name of an agent answering from outside wacrm, or null. */
+  externalAgent: string | null;
 }
 const statusCache = new Map<string, AiAccountStatus>();
 
@@ -28,17 +30,25 @@ async function fetchAiAccountStatus(accountId: string): Promise<AiAccountStatus>
   if (cached) return cached;
   try {
     const res = await fetch("/api/ai/config", { cache: "no-store" });
-    if (!res.ok) return { autoReplyOn: false }; // don't cache a transient failure
+    // don't cache a transient failure
+    if (!res.ok) return { autoReplyOn: false, externalAgent: null };
     const j = await res.json();
     const status = {
       // AI auto-reply is "live" only when configured, the master switch
       // is on, and the inbound bot is enabled.
       autoReplyOn: !!(j?.configured && j?.is_active && j?.auto_reply_enabled),
+      // An external agent answers with the native bot deliberately off,
+      // so this is independent of everything above — including
+      // `configured`, since such an account usually has no config row.
+      externalAgent:
+        typeof j?.external_agent === "string" && j.external_agent
+          ? j.external_agent
+          : null,
     };
     statusCache.set(accountId, status);
     return status;
   } catch {
-    return { autoReplyOn: false }; // don't cache
+    return { autoReplyOn: false, externalAgent: null }; // don't cache
   }
 }
 
@@ -67,8 +77,16 @@ interface AiThreadBannerProps {
  * conversation:
  *   - bot active here → "AI is replying automatically" + [Take over]
  *   - bot paused here → the handoff note (if any) + [Resume AI]
- * Renders nothing when the account has no auto-reply configured, or when
- * the bot is active but a human already owns the thread (nothing to do).
+ * Renders nothing when nobody is auto-replying, or when the bot is
+ * active but a human already owns the thread (nothing to do).
+ *
+ * "Nobody" covers two cases: the native bot is off, AND no external
+ * agent is configured. An account whose replies come from an agent
+ * outside wacrm still needs this banner — it's the per-thread stop
+ * button — so `EXTERNAL_AGENT_NAME` alone is enough to show it, and
+ * the labels then name that agent instead of saying "AI assistant".
+ * The pause it writes is the same `ai_autoreply_disabled` column, which
+ * the public API exposes for the external agent to read back.
  */
 export function AiThreadBanner({
   conversationId,
@@ -80,7 +98,11 @@ export function AiThreadBanner({
 }: AiThreadBannerProps) {
   const t = useTranslations("Inbox.aiBanner");
   const { accountId } = useAuth();
-  const [autoReplyOn, setAutoReplyOn] = useState<boolean | null>(null);
+  // null while the account status is still loading — the banner renders
+  // nothing until we know, so it never flashes the wrong state.
+  const [status, setStatus] = useState<AiAccountStatus | null>(null);
+  const autoReplyOn = status?.autoReplyOn ?? false;
+  const externalAgent = status?.externalAgent ?? null;
   const [busy, setBusy] = useState(false);
   // Optimistic local mirror of the pause flag so the banner flips
   // instantly on click; re-seeds whenever the thread (or its server
@@ -91,7 +113,7 @@ export function AiThreadBanner({
   useEffect(() => {
     if (!accountId) return;
     let alive = true;
-    fetchAiAccountStatus(accountId).then((s) => alive && setAutoReplyOn(s.autoReplyOn));
+    fetchAiAccountStatus(accountId).then((s) => alive && setStatus(s));
     return () => {
       alive = false;
     };
@@ -124,25 +146,46 @@ export function AiThreadBanner({
               : {}
             : { assigned_agent_id: null }),
         });
-        toast.success(paused ? t("tookOver") : t("resumed"));
+        toast.success(
+          paused
+            ? t("tookOver")
+            : externalAgent
+              ? t("resumedNamed", { name: externalAgent })
+              : t("resumed"),
+        );
       } catch {
         toast.error(t("networkError"));
       } finally {
         setBusy(false);
       }
     },
-    [conversationId, currentUserId, onChange, t],
+    [conversationId, currentUserId, externalAgent, onChange, t],
   );
 
-  // Account has no auto-reply → nothing to show. (Still loading → nothing.)
-  if (!autoReplyOn) return null;
+  // Nobody is auto-replying → nothing to show. (Still loading → nothing.)
+  // The external agent counts: with one connected the native bot is off
+  // by design, and gating on `autoReplyOn` alone would hide the only
+  // control an agent has to stop a bot mid-conversation.
+  if (!autoReplyOn && !externalAgent) return null;
+
+  // Name the bot the team actually recognises. An external agent wins
+  // the label: if both are somehow on, it's the one they'd name.
+  const activeLabel = externalAgent
+    ? t("activeTextNamed", { name: externalAgent })
+    : t("activeText");
+  const pausedLabel = externalAgent
+    ? t("pausedTitleNamed", { name: externalAgent })
+    : t("pausedTitle");
+  const resumeLabel = externalAgent
+    ? t("resumeNamed", { name: externalAgent })
+    : t("resume");
 
   // Paused here (a human took over, or the model handed off).
   if (paused) {
     return (
       <Banner tone="muted">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground">{t("pausedTitle")}</p>
+          <p className="font-medium text-foreground">{pausedLabel}</p>
           {handoffSummary && (
             <p className="truncate text-muted-foreground" title={handoffSummary}>
               {handoffSummary}
@@ -150,7 +193,7 @@ export function AiThreadBanner({
           )}
         </div>
         <BannerButton onClick={() => toggle(false)} busy={busy} icon={Undo2}>
-          {t("resume")}
+          {resumeLabel}
         </BannerButton>
       </Banner>
     );
@@ -165,7 +208,7 @@ export function AiThreadBanner({
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
         <span className="truncate font-medium text-foreground">
-          {t("activeText")}
+          {activeLabel}
         </span>
       </div>
       <BannerButton onClick={() => toggle(true)} busy={busy} icon={Hand}>

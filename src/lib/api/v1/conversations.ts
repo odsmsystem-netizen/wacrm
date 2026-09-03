@@ -15,6 +15,15 @@ export interface ApiConversation {
   contact_id: string;
   status: string;
   assigned_agent_id: string | null;
+  /**
+   * True when auto-reply is paused on this thread — an agent hit "Take
+   * over", or the model handed off. An external agent answering through
+   * the API must check this (and `assigned_agent_id`) before replying:
+   * they mean different things. `assigned_agent_id` says the thread has
+   * an owner; this says "don't answer here", which an agent can set
+   * without taking ownership.
+   */
+  ai_autoreply_disabled: boolean;
   last_message_text: string | null;
   last_message_at: string | null;
   unread_count: number;
@@ -57,6 +66,7 @@ export function serializeConversation(conv: Conversation): ApiConversation {
     contact_id: conv.contact_id,
     status: conv.status,
     assigned_agent_id: conv.assigned_agent_id ?? null,
+    ai_autoreply_disabled: conv.ai_autoreply_disabled ?? false,
     last_message_text: conv.last_message_text ?? null,
     last_message_at: conv.last_message_at ?? null,
     unread_count: conv.unread_count ?? 0,

@@ -290,11 +290,15 @@
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
+      "pausedTitleNamed": "{name} está en pausa aquí",
       "activeText": "El asistente de IA está respondiendo automáticamente",
+      "activeTextNamed": "{name} está respondiendo automáticamente",
       "takeOver": "Tomar control",
       "resume": "Reanudar IA",
+      "resumeNamed": "Reanudar {name}",
       "tookOver": "Tomaste el control de este chat.",
       "resumed": "IA reanudada.",
+      "resumedNamed": "{name} vuelve a responder aquí.",
       "updateError": "No se pudo actualizar el asistente de IA.",
       "networkError": "No se pudo conectar con el servidor."
     }

@@ -8,6 +8,7 @@ import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 import { validateAiCredentials } from '@/lib/ai/validate'
 import { embedTexts } from '@/lib/ai/embeddings'
+import { externalAgentName } from '@/lib/ai/external-agent'
 import { AiError, type AiProvider } from '@/lib/ai/types'
 
 function bad(message: string) {
@@ -43,7 +44,13 @@ export async function GET() {
       )
     }
 
-    if (!data) return NextResponse.json({ configured: false })
+    // Independent of the native config: an account can run an external
+    // agent with no `ai_configs` row at all, which is the common case
+    // (the native bot is off precisely because something else answers).
+    // So it rides along on the `configured: false` branch too.
+    const external_agent = externalAgentName()
+
+    if (!data) return NextResponse.json({ configured: false, external_agent })
     // The keys are selected only to derive the has_* flags; neither is
     // returned to the client.
     const { api_key, embeddings_api_key, ...safe } = data
@@ -51,6 +58,7 @@ export async function GET() {
       configured: true,
       has_key: !!api_key,
       has_embeddings_key: !!embeddings_api_key,
+      external_agent,
       ...safe,
     })
   } catch (err) {
