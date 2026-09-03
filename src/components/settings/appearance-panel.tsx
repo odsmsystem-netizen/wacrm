@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, Moon, Palette, SunMoon, Sun } from "lucide-react";
+import { Check, Languages, Moon, Palette, SunMoon, Sun } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
 import { MODES, THEMES, type Mode, type ThemeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { LanguagePicker } from "./language-picker";
 import { SettingsPanelHead } from "./settings-panel-head";
 
 /**
@@ -19,6 +20,11 @@ import { SettingsPanelHead } from "./settings-panel-head";
  * Persistence: localStorage only (device-scoped). The boot script in
  * layout.tsx replays both choices before first paint on subsequent
  * loads.
+ *
+ * The language picker below is the exception: it writes a cookie the
+ * server reads, because the messages are resolved server-side before
+ * the page renders. Same panel, different mechanism — see
+ * language-picker.tsx.
  */
 export function AppearancePanel() {
   const { theme, setTheme, mode, setMode } = useTheme();
@@ -72,6 +78,18 @@ export function AppearancePanel() {
             />
           ))}
         </div>
+      </div>
+
+      <div className="mt-8 space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Languages className="size-4 text-muted-foreground" />
+          {t("language")}
+        </h3>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          {t("languageHint")}
+        </p>
+
+        <LanguagePicker />
       </div>
     </section>
   );

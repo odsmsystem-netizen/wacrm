@@ -1615,6 +1615,8 @@
       "useMode": "Use {mode} mode",
       "active": "Active",
       "accentColor": "Accent color",
+      "language": "Language",
+      "languageHint": "Choose the language for menus and labels. Saved to this browser.",
       "useTheme": "Use {name} theme"
     },
     "security": {
