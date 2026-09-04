@@ -225,6 +225,62 @@ agent that replies to inbound messages should read the conversation
 first. That call also returns the contact's `phone`, which the webhook
 omits too.
 
+### `PATCH /api/v1/conversations/{id}`
+
+Assign, release, or change the status of a conversation. Scope:
+`conversations:write`. Send `assigned_agent_id`, `status`, or both.
+
+```bash
+curl -X PATCH https://your-crm.example.com/api/v1/conversations/CONV_ID   -H "Authorization: Bearer wacrm_live_xxx"   -H "Content-Type: application/json"   -d '{"assigned_agent_id": "auto"}'
+```
+
+| Value for `assigned_agent_id` | Effect |
+|---|---|
+| an agent's user id | Assigns to that agent |
+| `"auto"` | Round-robin: the agent who has gone longest without an assignment |
+| `null` | Releases the conversation |
+
+`"auto"` exists so a caller can assign without first learning who the
+account's agents are. It skips `viewer` members — they can read the
+inbox but not reply, so a customer assigned to one would be waiting on
+somebody who can't answer. When nobody is eligible you get `409
+no_agent_available`; retrying won't help until the account has an agent.
+
+`status` accepts `open`, `pending` or `closed`.
+
+The response is the full conversation as it now stands, so you can see
+who `"auto"` picked without a second call.
+
+Every assignment also stamps `assigned_at`, which is what the rotation
+reads to decide whose turn is next — so don't re-assign in a loop, or
+that agent keeps going to the back of the queue.
+
+### `POST /api/v1/deals`
+
+Create a deal on the pipeline. Scope: `deals:write`. It appears in the
+contact's sidebar next to their conversation, and on the pipeline board.
+
+```bash
+curl -X POST https://your-crm.example.com/api/v1/deals   -H "Authorization: Bearer wacrm_live_xxx"   -H "Content-Type: application/json"   -d '{
+        "contact_id": "…",
+        "title": "Cable boa 3/8 — 100 m",
+        "value": 4445.12,
+        "conversation_id": "…"
+      }'
+```
+
+Only `contact_id` and `title` are required. `pipeline_id` and `stage_id`
+are optional: leave them out and the deal lands on the account's first
+pipeline, in its first stage — an outside caller rarely knows what the
+board looks like. Pass them to place it precisely; a stage that doesn't
+belong to the given pipeline is rejected (`400`), because the deal would
+land on a board where nobody can see it.
+
+`value` defaults to 0. The currency is the account's own setting, not a
+per-deal field — wacrm keeps one currency per account.
+
+`409 no_pipeline` means the account hasn't created a pipeline yet.
+
 ### `GET /api/v1/conversations/{id}/messages`
 
 List a conversation's messages, newest first. Scope: `messages:read`.
@@ -413,11 +469,27 @@ assigns it to whoever clicked). Your agent should read that flag, and
 `assigned_agent_id`, from `GET /api/v1/conversations/{id}` before
 replying — see that endpoint for what the two mean.
 
+Such an agent typically needs **three** scopes, and they cannot be
+changed after the key is created:
+
+| Scope | For |
+|---|---|
+| `messages:send` | Sending the reply |
+| `messages:read` | Reading a conversation's messages |
+| `conversations:read` | Listing conversations and checking assignment |
+| `conversations:write` | Assigning a conversation (optional) |
+| `deals:write` | Filing a quote on the pipeline (optional) |
+
+`messages:read` is easy to miss: listing conversations and reading their
+messages are separate permissions, so a key with only the other two lists
+threads fine and then gets `403` on every message read.
+
 Two limits worth knowing up front:
 
-- **Nothing external can assign or close a conversation.** The v1
-  conversation endpoints are read-only; the route behind "Take over" is
-  session-authenticated dashboard-only.
+- **Assigning needs its own scope.** `PATCH /api/v1/conversations/{id}`
+  handles it (`conversations:write`), including `"auto"` for round-robin.
+  The route behind the inbox's "Take over" button is a different one,
+  session-authenticated and dashboard-only.
 - **The 24-hour window is not checked here.** Outside it Meta rejects
   the send and you get `meta_error` with `502`; parse the message for
   Meta's own code if you need to tell that apart from other failures.

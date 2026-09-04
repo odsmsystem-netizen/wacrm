@@ -24,6 +24,7 @@ import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
+import { pickNextAgent } from '@/lib/conversations/assign'
 
 // ------------------------------------------------------------
 // Public API
@@ -485,20 +486,21 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
       if (!args.contactId) throw new Error('assign_conversation needs a contact')
       let agentId = cfg.agent_id
       if (cfg.mode === 'round_robin') {
-        // Pick any member of the account. The existing implementation
-        // only ever returned the automation's author; preserving that
-        // shape until a real round-robin algorithm replaces it.
-        const { data: profiles } = await db
-          .from('profiles')
-          .select('user_id')
-          .eq('account_id', args.automation.account_id)
-          .limit(1)
-        agentId = profiles?.[0]?.user_id
+        // Real rotation now (migration 040): whoever has gone longest
+        // without an assignment. This used to take `.limit(1)` off
+        // profiles with no ordering, so it handed every conversation to
+        // the same person while calling itself round-robin.
+        agentId = (await pickNextAgent(db, args.automation.account_id)) ?? undefined
       }
       if (!agentId) return 'no agent resolved'
       await db
         .from('conversations')
-        .update({ assigned_agent_id: agentId })
+        .update({
+          assigned_agent_id: agentId,
+          // Written on every assignment: it's what the rotation reads
+          // to decide whose turn is next.
+          assigned_at: new Date().toISOString(),
+        })
         .eq('account_id', args.automation.account_id)
         .eq('contact_id', args.contactId)
       return `assigned to ${agentId}`
