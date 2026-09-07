@@ -299,7 +299,10 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
 
       for (let i = 0; i < value.messages.length; i++) {
         const message = value.messages[i]
-        const contact = value.contacts[i] || value.contacts[0]
+        // `contacts` es opcional en el payload de Meta: hay entregas que
+        // traen `messages` sin él. Sin las interrogaciones, indexarlo
+        // lanza y se pierde el mensaje entero.
+        const contact = value.contacts?.[i] ?? value.contacts?.[0]
 
         await processMessage(
           message,
@@ -574,7 +577,11 @@ async function handleReaction(
 
 async function processMessage(
   message: WhatsAppMessage,
-  contact: { profile: { name: string }; wa_id: string },
+  // Todo opcional, porque Meta lo manda así: hay entregas sin
+  // `contacts`, y contactos sin `profile`. El tipo que prometía las tres
+  // cosas hacía que leerlas pareciera seguro, y no lo era. `wa_id` no se
+  // usa aquí — el teléfono sale de `message.from`, que sí viene siempre.
+  contact: { profile?: { name?: string }; wa_id?: string } | undefined,
   // Tenancy. Resolved from the matched whatsapp_config row; every
   // contact / conversation / message row created downstream is
   // stamped with this so any member of the account can see it.
@@ -589,7 +596,15 @@ async function processMessage(
   mirrorMedia: boolean
 ) {
   const senderPhone = normalizePhone(message.from)
-  const contactName = contact.profile.name
+  // Meta doesn't always send `profile`, and when it doesn't, reading
+  // `.name` off it throws and the whole inbound message is lost — the
+  // customer writes and nothing reaches the inbox, with only a
+  // "Cannot read properties of undefined" in the server log.
+  //
+  // An empty name is already handled downstream: findOrCreateContact
+  // falls back to `name || phone` when creating, and skips the rename
+  // when the name is blank. So there was never a reason to require it.
+  const contactName = contact?.profile?.name ?? ''
 
   // Find or create contact
   const contactOutcome = await findOrCreateContact(
