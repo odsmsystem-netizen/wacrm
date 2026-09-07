@@ -116,6 +116,16 @@ class NotificacionVendedor(Base):
     vendedor_asignado: Mapped[str] = mapped_column(String(200), default="")
     vendedor_whatsapp: Mapped[str] = mapped_column(String(50), default="")
     notificado: Mapped[bool] = mapped_column(Integer, default=0)
+    # El folio es el número de documento que ve el cliente. Se guarda junto al
+    # id interno porque al bloquear una cotización duplicada hay que devolverle
+    # al cliente el folio de la PRIMERA, y volver a pedírselo a NetSuite en cada
+    # intento sería una llamada de red por un dato que ya teníamos.
+    folio: Mapped[str] = mapped_column(String(50), default="")
+    # Huella del pedido que originó esta oportunidad: qué artículos y cuántos.
+    # Es lo que distingue "el cliente confirmó dos veces por error" (misma
+    # huella) de "el cliente quiere cotizar otra cosa" (huella distinta), para
+    # bloquear lo primero sin estorbar lo segundo.
+    huella_pedido: Mapped[str] = mapped_column(String(500), default="", index=True)
     creado: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
@@ -329,6 +339,15 @@ async def _migrar(conn):
     columnas = {fila[1] for fila in resultado.fetchall()}
     if "empresa" not in columnas:
         await conn.execute(text("ALTER TABLE leads ADD COLUMN empresa VARCHAR(200) DEFAULT ''"))
+
+    resultado = await conn.execute(text("PRAGMA table_info(notificaciones_vendedor)"))
+    columnas = {fila[1] for fila in resultado.fetchall()}
+    if "folio" not in columnas:
+        await conn.execute(text(
+            "ALTER TABLE notificaciones_vendedor ADD COLUMN folio VARCHAR(50) DEFAULT ''"))
+    if "huella_pedido" not in columnas:
+        await conn.execute(text(
+            "ALTER TABLE notificaciones_vendedor ADD COLUMN huella_pedido VARCHAR(500) DEFAULT ''"))
 
 
 async def inicializar_db():
@@ -546,17 +565,53 @@ async def obtener_cliente(telefono: str) -> dict | None:
 
 async def registrar_notificacion_vendedor(telefono: str, categoria: str, netsuite_ref: str,
                                            total: float, vendedor_asignado: str,
-                                           vendedor_whatsapp: str, notificado: bool) -> int:
+                                           vendedor_whatsapp: str, notificado: bool,
+                                           folio: str = "", huella_pedido: str = "") -> int:
     async with async_session() as session:
         n = NotificacionVendedor(
             telefono=telefono, categoria=categoria, netsuite_ref=netsuite_ref, total=total,
             vendedor_asignado=vendedor_asignado, vendedor_whatsapp=vendedor_whatsapp,
             notificado=1 if notificado else 0,
+            folio=folio, huella_pedido=huella_pedido,
         )
         session.add(n)
         await session.commit()
         await session.refresh(n)
         return n.id
+
+
+async def oportunidad_reciente(telefono: str, huella_pedido: str,
+                               dentro_de_minutos: int) -> dict | None:
+    """La oportunidad que este teléfono ya generó por ESTE mismo pedido, si
+    ocurrió dentro de la ventana. None si no hay.
+
+    Es el candado contra cotizaciones duplicadas. El caso real que lo motivó:
+    el cliente escribió "l a1" (un dedazo), Claudia lo leyó como confirmación
+    y cotizó; el cliente corrigió con "opcion1" y Claudia cotizó otra vez. Dos
+    documentos formales en NetSuite para un solo pedido.
+
+    Se compara la huella y no solo el teléfono a propósito: un cliente que
+    luego quiere cotizar OTRA cosa tiene todo el derecho a un folio nuevo. Lo
+    que se bloquea es repetir el mismo pedido, no volver a cotizar.
+    """
+    if not huella_pedido:
+        return None
+    corte = datetime.utcnow() - timedelta(minutes=dentro_de_minutos)
+    async with async_session() as session:
+        result = await session.execute(
+            select(NotificacionVendedor)
+            .where(NotificacionVendedor.telefono == telefono,
+                   NotificacionVendedor.categoria == "lead_nuevo",
+                   NotificacionVendedor.huella_pedido == huella_pedido,
+                   NotificacionVendedor.creado >= corte)
+            .order_by(NotificacionVendedor.creado.desc())
+            .limit(1)
+        )
+        n = result.scalar_one_or_none()
+        if n is None:
+            return None
+        return {"folio": n.folio, "opportunity_id": n.netsuite_ref, "total": n.total,
+                "vendedor_asignado": n.vendedor_asignado, "notificado": bool(n.notificado)}
 
 
 # ── Tickets de soporte ──────────────────────────────────────────────────

@@ -1083,6 +1083,25 @@ async def notificar_vendedor_cliente_existente(telefono: str, salesrep_id: str,
             "mensaje_cliente": _cierre_para_cliente(vendedor, notificado)}
 
 
+# Cuánto tiempo se considera que un pedido idéntico es el MISMO pedido y no
+# uno nuevo. Quince minutos cubre de sobra un dedazo y su corrección —lo que
+# pasa en segundos— sin estorbarle al cliente que más tarde vuelve a pedir lo
+# mismo de verdad, que para entonces ya es otra compra.
+_VENTANA_ANTIDUPLICADO_MIN = 15
+
+
+def _huella_pedido(items: list[dict]) -> str:
+    """Identifica un pedido por su contenido: qué artículos y cuántos.
+
+    Se ordena para que el mismo pedido dé la misma huella sin importar en qué
+    orden se agregaron las líneas. El precio queda fuera a propósito: si el
+    catálogo cambia entre dos intentos, sigue siendo el mismo pedido.
+    """
+    return "|".join(sorted(
+        f"{it['codigo']}x{it['cantidad']:g}" for it in items
+    ))
+
+
 async def generar_oportunidad(telefono: str) -> dict:
     """
     LEAD NUEVO (no encontrado en verificar_cliente_existente): genera una
@@ -1103,6 +1122,43 @@ async def generar_oportunidad(telefono: str) -> dict:
     items_carrito = await memory.ver_carrito(telefono)
     if not items_carrito:
         return {"ok": False, "error": "El pedido está vacío, no hay nada que cotizar."}
+
+    # ── Candado contra cotizaciones duplicadas ──────────────────────────────
+    # El estado del carrito NO sirve para detectar esto: la primera cotización
+    # lo deja confirmado (o sea, vacío), así que cuando el cliente "confirma"
+    # otra vez Claudia vuelve a agregar el artículo y el carrito luce tan
+    # legítimo como la primera vez. Lo que sí distingue es el hecho ya
+    # ocurrido: este teléfono ya generó una oportunidad por este mismo pedido
+    # hace unos minutos. Caso real: el cliente escribió "l a1" (dedazo),
+    # Claudia lo tomó por confirmación y cotizó; el cliente corrigió con
+    # "opcion1" y se generó una SEGUNDA oportunidad formal en NetSuite.
+    huella = _huella_pedido(items_carrito)
+    previa = await memory.oportunidad_reciente(telefono, huella, _VENTANA_ANTIDUPLICADO_MIN)
+    if previa:
+        # El pedido repetido se da por servido. Si se dejara sin confirmar, se
+        # arrastraría a la siguiente cotización de verdad del cliente y esa
+        # saldría con artículos de más.
+        await memory.confirmar_pedido(telefono)
+        logger.info(
+            f"Cotización duplicada evitada para {telefono}: este pedido ya generó "
+            f"el folio {previa['folio'] or previa['opportunity_id']}."
+        )
+        return {
+            "ok": True,
+            "duplicado": True,
+            "folio": previa["folio"],
+            "opportunity_id": previa["opportunity_id"],
+            "total": previa["total"],
+            "articulos_sin_resolver": [],
+            "vendedor_asignado": previa["vendedor_asignado"],
+            "vendedor_notificado": previa["notificado"],
+            "nota": (
+                "Este pedido YA tenía cotización y no se generó una nueva. "
+                "Confírmale al cliente el folio de arriba con naturalidad, como "
+                "si acabaras de registrarlo — NO menciones que hubo un duplicado "
+                "ni le hagas notar que se repitió."
+            ),
+        }
 
     con = ns_db.conectar()
     lineas, sin_item_id = [], []
@@ -1160,6 +1216,10 @@ async def generar_oportunidad(telefono: str) -> dict:
         telefono, "lead_nuevo", resultado["opportunity_id"], total,
         vendedor.get("nombre", "") if vendedor else "", vendedor.get("whatsapp", "") if vendedor else "",
         notificado,
+        # Estos dos campos son los que hacen efectivo el candado de arriba en
+        # el siguiente intento: sin ellos no habría con qué comparar.
+        folio=str(resultado.get("folio") or ""),
+        huella_pedido=huella,
     )
     await memory.confirmar_pedido(telefono)
 
