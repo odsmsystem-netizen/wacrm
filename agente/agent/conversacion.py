@@ -46,7 +46,24 @@ async def atender_mensaje(telefono: str, texto: str, proveedor=None) -> str | No
     respuesta = await generar_respuesta(texto, historial, telefono=telefono)
 
     await guardar_mensaje(telefono, "assistant", respuesta)
-    await proveedor.enviar_mensaje(telefono, respuesta)
+
+    # El resultado del envío NO se puede ignorar. `enviar_mensaje`
+    # devuelve False —sin lanzar— en casos reales y frecuentes: la
+    # ventana de 24 horas cerrada, el CRM reiniciándose, Meta
+    # rechazando. Descartarlo dejaba al cliente sin respuesta mientras
+    # todo el sistema —la memoria, el CRM, el sondeo— quedaba convencido
+    # de que sí se le había contestado.
+    #
+    # Se lanza en vez de devolver un valor porque quien llama debe
+    # enterarse: el sondeo NO avanza el estado cuando esto falla, así que
+    # el mensaje sigue pendiente y se reintenta en la próxima vuelta. Sin
+    # la excepción, se marcaba como atendido y se perdía para siempre.
+    entregado = await proveedor.enviar_mensaje(telefono, respuesta)
+    if not entregado:
+        raise RuntimeError(
+            f"La respuesta a {telefono} no se pudo entregar. "
+            "Queda pendiente para el siguiente intento."
+        )
 
     logger.info(f"Respuesta a {telefono}: {respuesta}")
     return respuesta

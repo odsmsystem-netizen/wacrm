@@ -9,6 +9,7 @@ registrar leads y abrir tickets de soporte durante la conversación.
 """
 
 import os
+import json
 import yaml
 import logging
 import inspect
@@ -386,7 +387,14 @@ async def generar_respuesta(mensaje: str, historial: list[dict], telefono: str =
                 bloques_resultado.append({
                     "type": "tool_result",
                     "tool_use_id": bloque.id,
-                    "content": str(resultado),
+                    # JSON, no `str()`. `str()` de un dict de Python da
+                    # comillas simples y True/False/None — parecido a
+                    # JSON pero no lo es, y con acentos o comillas dentro
+                    # de un nombre de artículo el modelo tiene que
+                    # adivinar dónde empieza y acaba cada valor.
+                    # `default=str` evita que un Decimal o una fecha del
+                    # catálogo tumben la serialización entera.
+                    "content": json.dumps(resultado, ensure_ascii=False, default=str),
                 })
             mensajes.append({"role": "user", "content": bloques_resultado})
 

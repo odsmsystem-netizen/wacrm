@@ -24,7 +24,7 @@ import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
-import { pickNextAgent } from '@/lib/conversations/assign'
+import { resolveAssignee } from '@/lib/conversations/assign'
 
 // ------------------------------------------------------------
 // Public API
@@ -484,14 +484,29 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
     case 'assign_conversation': {
       const cfg = step.step_config as AssignConversationStepConfig
       if (!args.contactId) throw new Error('assign_conversation needs a contact')
-      let agentId = cfg.agent_id
-      if (cfg.mode === 'round_robin') {
-        // Real rotation now (migration 040): whoever has gone longest
-        // without an assignment. This used to take `.limit(1)` off
-        // profiles with no ordering, so it handed every conversation to
-        // the same person while calling itself round-robin.
-        agentId = (await pickNextAgent(db, args.automation.account_id)) ?? undefined
+      // Same resolution the public API uses, and for the same reason: an
+      // explicit `agent_id` is account-controlled (an admin can PUT one
+      // straight onto the automation, bypassing the UI's member picker),
+      // `assigned_agent_id` has no foreign key, and this runs as service
+      // role — so nothing else would catch an id from another account.
+      // Migration 027's trigger would then hand that stranger a
+      // notification carrying this account's contact name.
+      //
+      // round_robin is a real rotation now (migration 040): whoever has
+      // gone longest without an assignment. It used to take `.limit(1)`
+      // off profiles with no ordering, handing every conversation to the
+      // same person while calling itself round-robin.
+      const target = cfg.mode === 'round_robin' ? 'auto' : (cfg.agent_id ?? null)
+      const resolved = await resolveAssignee(db, args.automation.account_id, target)
+      if (!resolved.ok) {
+        // Both reasons are worth naming in the log: "nobody is eligible"
+        // and "that id isn't ours" look identical from the outside, and
+        // the second one means the automation is misconfigured.
+        return resolved.reason === 'not_a_member'
+          ? 'agent is not a member of this account'
+          : 'no agent resolved'
       }
+      const agentId = resolved.agentId
       if (!agentId) return 'no agent resolved'
       await db
         .from('conversations')

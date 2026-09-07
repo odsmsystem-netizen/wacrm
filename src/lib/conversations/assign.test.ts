@@ -110,15 +110,17 @@ describe('resolveAssignee', () => {
     });
   });
 
-  // A missing GRANT on pick_next_agent looks exactly like this. It must
-  // not read as "assigned to nobody in particular" — see migration 031,
-  // where the same swallowed error silenced the whole AI reply path.
-  it('reports no_agent_available when the RPC itself fails', async () => {
+  // A broken RPC must NOT look like "nobody was available". That was
+  // the original bug: the error got swallowed, the rotation silently
+  // assigned nobody forever, and the automation engine logged the step
+  // as successful. A missing GRANT looks exactly like this — see
+  // migration 031, where the same swallowed error silenced the whole AI
+  // reply path for everyone.
+  it('throws when the RPC itself fails, instead of reporting no agent', async () => {
     const { db } = makeDb({ rpcError: true });
-    expect(await resolveAssignee(db, ACCOUNT, 'auto')).toEqual({
-      ok: false,
-      reason: 'no_agent_available',
-    });
+    await expect(resolveAssignee(db, ACCOUNT, 'auto')).rejects.toThrow(
+      /pick_next_agent failed/
+    );
   });
 });
 

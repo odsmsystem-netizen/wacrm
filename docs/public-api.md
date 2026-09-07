@@ -48,6 +48,8 @@ it. Grant the minimum.
 | `contacts:read`      | List and read contacts                   |
 | `contacts:write`     | Create and update contacts               |
 | `conversations:read` | List and read conversations              |
+| `conversations:write`| Assign, close and reopen conversations   |
+| `deals:write`        | Create deals on the pipeline             |
 | `broadcasts:send`    | Launch broadcast campaigns               |
 | `webhooks:manage`    | Register and manage outbound webhooks    |
 
@@ -499,8 +501,12 @@ Two limits worth knowing up front:
 
 ## Roadmap
 
-The public API now covers messaging, contacts, conversations,
-broadcasts, and outbound webhooks — the full scope of
-[#245](https://github.com/ArnasDon/wacrm/issues/245). Future ideas
-(deals/pipelines, templates, flows, a delivery queue for webhooks) are
-not yet scheduled.
+The public API now covers messaging, contacts, conversations
+(read and assign), deals, broadcasts, and outbound webhooks — the full
+scope of [#245](https://github.com/ArnasDon/wacrm/issues/245), plus the
+endpoints an external agent needs to file a quote and hand a customer
+to a human.
+
+Still unscheduled: templates, flows, reading the pipeline back (only
+creating deals is exposed today), and a delivery queue that would make
+webhooks retry instead of being best-effort.

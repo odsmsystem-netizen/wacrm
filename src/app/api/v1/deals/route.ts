@@ -165,6 +165,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Same reason as the contact and the pipeline:
+    // `deals.conversation_id` has a foreign key but no account filter,
+    // and this route runs as service role. Unchecked, a leaked id would
+    // let a deal hang off another account's conversation.
+    const conversationId =
+      typeof body.conversation_id === 'string' ? body.conversation_id : null;
+    if (conversationId) {
+      const { data: conv } = await ctx.supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .eq('account_id', ctx.accountId)
+        .maybeSingle();
+      if (!conv) return fail('not_found', 'Conversation not found', 404);
+    }
+
     const userId = await ownerUserId(ctx.supabase, ctx.accountId, ctx.createdBy);
     if (!userId) {
       return fail('internal', 'Could not resolve an owner for this deal', 500);
@@ -187,8 +203,7 @@ export async function POST(request: Request) {
         pipeline_id: pipelineId,
         stage_id: stageId,
         contact_id: contactId,
-        conversation_id:
-          typeof body.conversation_id === 'string' ? body.conversation_id : null,
+        conversation_id: conversationId,
         title,
         value,
         currency: acct?.default_currency ?? 'USD',

@@ -65,7 +65,17 @@ export async function POST(request: Request, { params }: Params) {
     const update: Record<string, unknown> = { ai_autoreply_disabled: paused }
 
     if (paused) {
-      if (assignToMe) update.assigned_agent_id = userId
+      if (assignToMe) {
+        update.assigned_agent_id = userId
+        // Every assignment stamps `assigned_at` — it's what the
+        // round-robin reads to know whose turn is next (migration 040).
+        // Skipping it here would be the worst place to skip it: taking
+        // over from the banner is the most common way an agent picks up
+        // a thread in an account that runs AI. Those conversations would
+        // stay at NULL, the rotation would read that as "never received
+        // anything", and it would keep sending them MORE work.
+        update.assigned_at = new Date().toISOString()
+      }
     } else {
       // Resuming hands the thread *back to the bot*. Clear the pause and
       // the handoff note, and — crucially — release ANY assignment, not

@@ -35,9 +35,15 @@ export async function pickNextAgent(
   const { data, error } = await db.rpc('pick_next_agent', {
     p_account_id: accountId,
   });
+  // Throws instead of returning null, because the two mean opposite
+  // things. Null is a real, benign state: the account has no agent yet.
+  // An RPC error is a malfunction — a missing GRANT (the bug migration
+  // 031 exists for), the function gone, the database unreachable.
+  // Collapsing them made every failure read as "nobody was available",
+  // which the automation engine then logged as a SUCCESSFUL step.
+  // Nobody would ever have looked.
   if (error) {
-    console.error('[assign] pick_next_agent failed:', error);
-    return null;
+    throw new Error(`pick_next_agent failed: ${error.message}`);
   }
   return (data as string | null) ?? null;
 }

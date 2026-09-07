@@ -35,6 +35,11 @@ _TIMEOUT = 20.0
 # Es un tope de seguridad, no un objetivo: normalmente hay uno o dos nuevos.
 _MAX_MENSAJES = 20
 
+# Tope de conversaciones que se revisan por vuelta. Es el maximo que
+# acepta el CRM; pedidas por actividad, son las 100 que se movieron mas
+# recientemente.
+_MAX_CONVERSACIONES = 100
+
 # Cuántas veces se reintenta una conversación que falló antes de darla por
 # perdida. Sin este tope, un mensaje que siempre rompe algo se reintentaría
 # cada pocos segundos para siempre, quemando llamadas a Claude.
@@ -44,8 +49,15 @@ _MAX_INTENTOS = 3
 def _config() -> tuple[str, str, float]:
     url = os.getenv("WACRM_URL", "").rstrip("/")
     api_key = os.getenv("WACRM_API_KEY", "").strip()
-    # 5 s deja la respuesta bastante viva y gasta 12 llamadas por minuto:
-    # muy por debajo del límite de 120/min por clave que aplica wacrm.
+    # El límite del CRM son 120 peticiones por minuto POR CLAVE, y lo
+    # cuenta sobre todas las rutas de /api/v1 juntas, no solo esta.
+    #
+    # En reposo el costo es 1 llamada por vuelta: a 2 s son 30/min, un
+    # cuarto del presupuesto. Cada conversación que se mueve añade otra
+    # (leer sus mensajes) más las de responder, registrar la cotización o
+    # etiquetar. Con varias conversaciones activas a la vez el consumo
+    # sube deprisa, así que subir el intervalo es lo primero que hay que
+    # tocar si empiezan a aparecer 429 en el log.
     try:
         intervalo = float(os.getenv("SONDEO_WACRM_INTERVALO", "5"))
     except ValueError:
@@ -90,8 +102,10 @@ def _entrantes_desde(mensajes: list[dict], ultimo_id: str | None) -> tuple[list[
     Un id no depende de ningún reloj.
     """
     nuevos: list[str] = []
+    encontrado = ultimo_id is None
     for m in mensajes:
         if m.get("id") == ultimo_id:
+            encontrado = True
             break
         if m.get("direction") != "inbound":
             # Lo saliente incluye las propias respuestas de Claudia:
@@ -102,14 +116,56 @@ def _entrantes_desde(mensajes: list[dict], ultimo_id: str | None) -> tuple[list[
             nuevos.append(texto)
 
     nuevos.reverse()
+
+    # El corte quedó fuera de la ventana que pedimos: hubo más mensajes
+    # de los que caben desde la última vuelta. Sin esto, la ventana
+    # entera se tomaría como nueva y Claudia volvería a responder cosas
+    # que ya contestó — mensajes repetidos al cliente, que es peor que
+    # tardar. Se atiende solo el último, que es el que espera respuesta.
+    if not encontrado:
+        logger.warning(
+            "La conversación avanzó más de %s mensajes desde la última "
+            "revisión; se atiende solo el último para no repetir respuestas.",
+            _MAX_MENSAJES,
+        )
+        nuevos = nuevos[-1:]
+
     id_mas_reciente = mensajes[0].get("id") if mensajes else ultimo_id
     return nuevos, id_mas_reciente
 
 
 async def _revisar(client, url, api_key, estado: dict, fallos: dict, primera_vuelta: bool) -> None:
-    datos = await _pedir(client, url, api_key, "/api/v1/conversations?status=open")
+    # `sort=activity` y un limite explicito, y las dos cosas importan.
+    #
+    # Sin el orden por actividad, el CRM devuelve las conversaciones mas
+    # RECIENTEMENTE CREADAS. Y una conversacion se crea una sola vez por
+    # contacto y se reutiliza para siempre: un cliente de hace meses que
+    # escribe hoy sigue en el puesto donde nacio su hilo. Pasados 50
+    # contactos, ese cliente deja de aparecer en la primera pagina y su
+    # mensaje no se responde NUNCA — sin error, sin log, sin nada que
+    # distinga eso de "no escribio".
+    #
+    # El limite de 100 es el maximo del CRM. Si mas de 100 conversaciones
+    # se mueven entre dos vueltas, el problema no es la pagina.
+    datos = await _pedir(
+        client, url, api_key,
+        f"/api/v1/conversations?status=open&sort=activity&limit={_MAX_CONVERSACIONES}",
+    )
     if not datos:
         return
+
+    # Olvidar las conversaciones que ya no vienen en la lista (cerradas, o
+    # desplazadas por otras más activas). Sin esto, `estado` y `fallos`
+    # crecen para siempre en un proceso que corre semanas.
+    #
+    # Si una conversación olvidada se reabre, vuelve a entrar como nueva y
+    # se atiende solo su último mensaje — que es exactamente lo que
+    # queremos: no arrastrar a la memoria del modelo una conversación de
+    # hace meses.
+    vivas = {c.get("id") for c in datos.get("data", []) if c.get("id")}
+    for muerta in [cid for cid in estado if cid not in vivas]:
+        estado.pop(muerta, None)
+        fallos.pop(muerta, None)
 
     for conv in datos.get("data", []):
         conv_id = conv.get("id")
@@ -203,6 +259,15 @@ async def _revisar(client, url, api_key, estado: dict, fallos: dict, primera_vue
                     f"Conversación {conv_id} falló {intentos} veces; se deja de "
                     f"reintentar. ATENDER A MANO en la bandeja. Último error: {e}"
                 )
+                # Dejar rastro EN LA BANDEJA, no solo en el log. Aquí hay
+                # un cliente esperando una respuesta que no va a llegar, y
+                # un mensaje de log solo lo ve quien esté mirando la
+                # consola en ese momento. Con la etiqueta, el vendedor
+                # puede filtrar por ella y encontrarlo.
+                try:
+                    await wacrm_crm.etiquetar(telefono, ["Requiere atención"])
+                except Exception:
+                    logger.warning("Tampoco se pudo etiquetar %s", conv_id)
                 marcar_visto()
             else:
                 logger.warning(
