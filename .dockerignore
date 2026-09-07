@@ -15,3 +15,10 @@ docker-compose*.yml
 .vscode
 .idea
 coverage
+
+# El agente vive en agente/ y se construye con su propio Dockerfile
+# (agente/Dockerfile, contexto ./agente). Nada de esa carpeta hace falta
+# para compilar el CRM, y sin esta linea su contenido —incluidos el .env
+# y las bases con datos de clientes que hay en esa carpeta en disco—
+# entraria al contexto de build del CRM.
+agente
