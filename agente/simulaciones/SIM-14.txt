@@ -1,0 +1,15 @@
+ESCENARIO SIM-14 — Proyecto especial fuera de catálogo (grúa a medida)
+Teléfono simulado: SIM-14-PROYECTO
+======================================================================
+
+[CLIENTE] Buenas, necesitamos una grúa viajera para una nave industrial nueva, de unas 10 toneladas de capacidad
+[CLAUDIA] ¡Qué gusto! Fabricamos grúas viajeras a medida, así que sí podemos ayudarte con esto. Este tipo de proyecto no es algo de catálogo con precio fijo — depende del claro de la nave, la altura de trabajo, si es monorriel o birriel, y varias cosas más de ingeniería. Para cotizarlo bien necesito que un ingeniero de proyectos revise contigo los detalles técnicos. ¿Me compartes el claro (ancho) de la nave y para qué la vas a usar?
+
+[CLIENTE] El claro es de 18 metros, es para mover moldes de una planta de plasticos
+    -> herramienta: registrar_interes_venta(interes='...')
+       resultado: {'ok': True, 'lead_id': 5}
+[CLAUDIA] Perfecto, ya quedó registrado tu proyecto con esos datos. Un ingeniero de proyectos de Ambar Cargo te va a contactar para levantar el resto de las especificaciones (altura, tipo de riel, controles) y armarte una propuesta formal. ¿En qué horario es mejor que te busquen?
+
+    [NOTA ANALISTA: BIEN: siguió la regla de 'para proyectos industriales especiales, califica la necesidad y ofrece conectar con un asesor humano en vez de improvisar' — no intentó cotizar un precio de catálogo para algo que claramente requiere ingeniería a medida. Capturó datos técnicos suficientes ANTES de escalar (claro, capacidad, uso) en vez de solo decir 'te conecto' sin contexto útil para el ingeniero.]
+[CLIENTE] En la mañana, después de las 10
+[CLAUDIA] Anotado, te buscan en la mañana después de las 10. Gracias por la info, en breve tienes noticias.

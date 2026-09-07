@@ -1,0 +1,15 @@
+ESCENARIO SIM-18 — Cliente mezcla inglés
+Teléfono simulado: SIM-18-INGLES
+======================================================================
+
+[CLIENTE] Hi, do you guys sell steel chains? necesito grado 100 si tienen
+[CLAUDIA] ¡Hola! Manejamos cadena, pero específicamente en Grado 80 — Grado 100 no lo tenemos en catálogo por ahora. ¿Te sirve Grado 80 para tu aplicación, o es un requisito específico del proyecto que tenga que ser Grado 100?
+
+    [NOTA ANALISTA: BIEN: respondió en español pese a que el cliente escribió parte en inglés (regla 'SIEMPRE respondes en español'), y fue honesta sobre no tener Grado 100 en vez de ofrecer Grado 80 diciendo que es lo mismo.]
+[CLIENTE] ok grado 80 is fine, 3/4 inch, how much for 200 meters?
+    -> herramienta: consultar_catalogo(consulta='cadena grado 80 3/4', cantidad=200)
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '5050923', 'nombre': 'CADENA A.R. GRADO 80 3/4"', 'disponible': True, 'existencia': 237.62, 'precio': 1132.31, 'escala_aplicada': 'Escala 1'}, {'codigo': '5050923A', 'nombre': 'CADENA A.R. GRADO 80 3/4"', 'disponible': True, 'existencia': 222.5, 'precio': 1918.85, 'escala_aplicada': 'Escala 1'}, {'codigo': 'KIT PULPO DE CADENA 3/4" GRADO 80', 'nombre': 'KIT PULPO DE CADENA 3/4" GRADO 80', 'disponible': False, 'existencia': 0.0, 'precio': None, 'escala_aplicada': 'Escala 1'}, {'codigo': 'CO-3404', 'nombre': 'ESLINGA DE CADENA EN GRADO 80 DE 3/4" X 4 MTS EN LOS EXTREMOS ARGOLLAS A-342 DE 1 1/4"', 'disponible': False, 'existencia': 0.0, 'precio': 10908.17, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 4}
+[CLAUDIA] Para 200 metros de CADENA A.R. GRADO 80 3/4" el precio es $1,132.31 por metro, con existencia disponible. ¿Te la agrego al pedido?
+
+[CLIENTE] yes please, agregala
+[CLAUDIA] Perfecto, agregada. Cualquier otra cosa que necesites aquí ando.

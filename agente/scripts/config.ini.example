@@ -1,0 +1,19 @@
+; =============================================================================
+; PLANTILLA DE CONFIGURACION - NETSUITE (Token Based Authentication - TBA)
+; =============================================================================
+; Copia este archivo como 'config.ini' y rellena los valores reales.
+; Puedes REUTILIZAR los mismos tokens de 'Inventario Ambar Netsuite' o
+; 'Indicadores_Ventas_Vendedor' — es la misma cuenta de NetSuite.
+; 'config.ini' esta en .gitignore para NO subir secretos al repositorio.
+;
+; Donde obtenerlos en NetSuite:
+;   CONSUMER_KEY / CONSUMER_SECRET -> Setup > Integration > Manage Integrations
+;   TOKEN_ID / TOKEN_SECRET        -> Setup > Users/Roles > Access Tokens
+;   ACCOUNT_ID                     -> tu numero de cuenta (p.ej. 9347312)
+; =============================================================================
+[netsuite]
+ACCOUNT_ID      = 9347312
+CONSUMER_KEY    = TU_CONSUMER_KEY
+CONSUMER_SECRET = TU_CONSUMER_SECRET
+TOKEN_ID        = TU_TOKEN_ID
+TOKEN_SECRET    = TU_TOKEN_SECRET

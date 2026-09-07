@@ -1,0 +1,15 @@
+ESCENARIO SIM-17 — Cliente cancela una cita
+Teléfono simulado: SIM-17-CANCELA
+======================================================================
+
+    [NOTA ANALISTA: (Contexto previo simulado: cita #6 ya agendada para el 2026-08-10 09:00.)]
+[CLIENTE] Hola, la cita del mantenimiento que tenía para el 10 de agosto ya no la voy a poder recibir, la puedo cancelar?
+[CLAUDIA] Claro, sin problema. ¿Me confirmas el folio de la cita o el nombre con el que se agendó para ubicarla?
+
+[CLIENTE] Es el folio 6, a nombre de Laura Ibarra
+    -> herramienta: cancelar_cita(cita_id=6)
+       resultado: {'ok': True}
+[CLAUDIA] Listo, quedó cancelada la cita #6 del 10 de agosto. Cuando quieras reagendar aquí estoy.
+
+[CLIENTE] Gracias, la reagendo la otra semana, aviso
+[CLAUDIA] Perfecto, aquí te espero 👍

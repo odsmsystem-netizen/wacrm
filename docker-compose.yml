@@ -40,3 +40,39 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  # ── El agente (Claudia) ─────────────────────────────────────
+  # Vive en agente/ y es un proceso aparte, en Python. No se fusiona con
+  # la app: el agente encadena llamadas al modelo y a NetSuite que tardan
+  # segundos, y meterlas dentro del CRM bloquearia peticiones de la
+  # bandeja mientras piensa.
+  #
+  # Se comunica con el CRM por su API publica, igual que lo haria desde
+  # otra maquina. `WACRM_URL` apunta al servicio `app` por su nombre de
+  # red interna, asi que no necesita salir a internet ni depender del DNS
+  # publico — que en esta red no vuelve por falta de hairpin NAT.
+  agente:
+    build:
+      context: ./agente
+    env_file:
+      - agente/.env
+    environment:
+      # Gana sobre lo que diga agente/.env: dentro de la red de Docker el
+      # CRM se llama `app`, no su dominio publico.
+      WACRM_URL: http://app:3000
+    volumes:
+      # Los datos viven en el host, no en la imagen. Sin esto el agente
+      # arranca con memoria vacia y SIN CATALOGO: netsuite_sync.db son
+      # 2.5 MB de productos que no estan en el repo (llevan datos de
+      # clientes), asi que la imagen se construye sin ellos y el agente
+      # no puede cotizar nada. No falla al arrancar; falla cuando un
+      # cliente pregunta un precio.
+      - ./agente/agentkit.db:/app/agentkit.db
+      - ./agente/netsuite_sync.db:/app/netsuite_sync.db
+      - ./agente/config:/app/config
+      - ./agente/knowledge:/app/knowledge
+      - ./agente/transcripts:/app/transcripts
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped

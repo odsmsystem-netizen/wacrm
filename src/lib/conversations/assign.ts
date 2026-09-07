@@ -19,11 +19,14 @@ export type AssignTarget = string | 'auto' | null;
 
 /**
  * The next agent in turn — whoever has gone longest without an
- * assignment. Returns null when the account has nobody eligible
- * (viewers don't count: they can read the inbox but not reply).
+ * assignment. Only `agent` members take part: owners and admins are
+ * left out of the automatic rotation (migration 041), because a
+ * customer handed to someone who doesn't work the inbox waits on a
+ * reply that isn't coming. Assigning by hand still works for any role.
  *
- * Callers must treat null as "couldn't assign", never as an error: an
- * account with a single viewer is unusual but not broken.
+ * Returns null when the account has no `agent` at all. Callers must
+ * treat that as "couldn't assign", never as an error — it's a real
+ * state, not a malfunction.
  */
 export async function pickNextAgent(
   db: SupabaseClient,

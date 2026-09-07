@@ -1,0 +1,28 @@
+ESCENARIO SIM-13 — Cliente existente con nombre mal dado (REAL al final)
+Teléfono simulado: SIM-13-NOMBREMAL
+======================================================================
+
+[CLIENTE] Hola quiero cotizacion formal de unos grilletes, ya somos clientes
+[CLAUDIA] Claro, para conectarte con tu asesor dime el nombre o razón social exacta con la que están registrados
+
+[CLIENTE] Somos Tubos Piramide, creo que asi esta
+    -> herramienta: verificar_cliente_existente(nombre='Tubos Piramide')
+       resultado: {'ok': True, 'encontrado': False}
+    [NOTA ANALISTA: 'Tubos Piramide' (sin razón social) NO hizo match exacto contra 'TUBOS PIRAMIDE S.A. DE C.V.' — encontrado=False. Esto es justo el comportamiento esperado: normalizar mayúsculas/acentos SÍ, pero no es búsqueda parcial, así que 'Tubos Piramide' solo (sin razón social) no coincide.]
+[CLAUDIA] No te encuentro exactamente con ese nombre en el sistema — ¿me das la razón social completa tal como aparece en tus facturas (con el S.A. de C.V. o similar), o si prefieres me pasas el RFC y busco con eso?
+
+[CLIENTE] Ah ok, es Tubos Piramide S.A. de C.V.
+    -> herramienta: verificar_cliente_existente(nombre='Tubos Piramide S.A. de C.V.')
+       resultado: {'ok': True, 'encontrado': True, 'cliente': {'nombre': 'TUBOS PIRAMIDE S.A. DE C.V.', 'netsuite_id': '562'}, 'salesrep_id': '115', 'vendedor_nombre': 'Wendy Ariadna Penelope Lopez Reyes', 'vendedor_tiene_whatsapp': True}
+[CLAUDIA] Perfecto, ahora sí te ubiqué. ¿Qué grilletes necesitas y cuántos, para dejárselo anotado a tu asesora?
+
+[CLIENTE] 10 grilletes crosby de 1/2 pulgada
+    -> herramienta: consultar_catalogo(consulta='grillete crosby 1/2')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '1018455', 'nombre': 'GRILLETE CROSBY G-209 1/2"', 'disponible': True, 'existencia': 146.0, 'precio': 280.51, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018614', 'nombre': 'GRILLETE CROSBY G-209 1 1/2"', 'disponible': True, 'existencia': 12.0, 'precio': 4403.1, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018678', 'nombre': 'GRILLETE CROSBY G-209 2 1/2"', 'disponible': False, 'existencia': 0.0, 'precio': 26089.7, 'escala_aplicada': 'Escala 1'}, {'codigo': '1019392', 'nombre': 'GRILLETE CROSBY G-210 1 1/2"', 'disponible': False, 'existencia': 0.0, 'precio': 6214.95, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018099', 'nombre': 'GRILLETE CROSBY G-213 DE 1/2PULG.', 'disponible': False, 'existencia': 0.0, 'precio': 328.26, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+    -> herramienta: agregar_al_pedido(codigo='1018455', cantidad=10)
+       resultado: {'ok': True}
+    -> herramienta: notificar_vendedor_cliente_existente()
+       resultado: {'ok': True, 'notificado': False, 'vendedor_nombre': 'Wendy Ariadna Penelope Lopez Reyes', 'mensaje_cliente': 'Muchas gracias, en breve será atendido por su asesor de ventas Wendy Ariadna Penelope Lopez Reyes. Muchas gracias por confiar en nosotros, buenas tardes.'}
+[CLAUDIA] Muchas gracias, en breve será atendido por su asesor de ventas Wendy Ariadna Penelope Lopez Reyes. Muchas gracias por confiar en nosotros, buenas tardes.
+
+    [NOTA ANALISTA: REAL: notificado=False a Wendy Ariadna Penelope Lopez Reyes (misma vendedora de SIM-04, mismo número sin sesión abierta — se espera que vuelva a fallar con 63016, confirmando que NO fue un evento aislado).]

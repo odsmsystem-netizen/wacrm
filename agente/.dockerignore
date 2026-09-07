@@ -1,0 +1,45 @@
+# Lo que NO debe entrar en la imagen del agente.
+#
+# El Dockerfile hace `COPY . .` sobre esta carpeta. Sin este archivo, la
+# imagen se construye con el .env real dentro (Anthropic, Twilio, NetSuite,
+# la clave del CRM), las credenciales OAuth1 de scripts/config.ini, y las
+# dos bases con datos de miles de clientes.
+#
+# Los volumenes del compose montan esos mismos archivos en marcha, asi que
+# el agente funciona igual sin ellos aqui — pero lo que queda horneado en
+# una capa de la imagen ya no se quita, y viaja con ella a cualquier
+# registro donde se suba.
+
+# Secretos
+.env
+.env.*
+!.env.example
+scripts/config.ini
+
+# Datos: memoria de conversaciones y catalogo sincronizado
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Salidas en marcha (van por volumen)
+logs/
+transcripts/
+respaldos/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Binarios que no hacen falta dentro del contenedor
+bin/
+
+# Control de versiones y notas de desarrollo
+.git/
+.githooks/
+.claude/
+docs/superpowers/
+simulaciones/

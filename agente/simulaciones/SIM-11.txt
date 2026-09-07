@@ -1,0 +1,15 @@
+ESCENARIO SIM-11 — Cliente informal/abreviado
+Teléfono simulado: SIM-11-INFORMAL
+======================================================================
+
+[CLIENTE] ola tienen cable pa grua
+[CLAUDIA] ¡Hola! Sí, manejamos cable de acero para grúa. ¿Me dices la medida (diámetro) que necesitas, o para qué equipo es?
+
+[CLIENTE] no c la medida es pa mi grua viajera de 5ton
+[CLAUDIA] Sin problema — para una grúa viajera de 5 toneladas normalmente se usa cable de 1/2" o 5/8" dependiendo del diseño del malacate, pero para no equivocarme: ¿me puedes ver la placa de datos del malacate o mandar una foto del cable actual? Así te doy la medida exacta sin arriesgarte a que no ajuste.
+
+    [NOTA ANALISTA: BIEN: en vez de adivinar una medida y venderla a ciegas (regla de 'vende como una persona real, no un catálogo parlante'), pidió el dato que realmente necesita para no arriesgar una venta incorrecta en un componente de seguridad (cable de grúa). Coherente con la nueva regla de capacidad/medida de SIM-10.]
+[CLIENTE] ah ok mando foto al rato, mientras cuanto seria el cable de 1/2 nomas para saber
+    -> herramienta: consultar_catalogo(consulta='cable 1/2')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '2012-619', 'nombre': 'CABLE BOA 1/2" TIPO 6X19 A/A', 'disponible': True, 'existencia': 4028.3, 'precio': 69.97, 'escala_aplicada': 'Escala 1'}, {'codigo': '2012', 'nombre': 'CABLE BOA 1/2" 6X26 A/A WARRIOR', 'disponible': True, 'existencia': 21595.7, 'precio': 73.31, 'escala_aplicada': 'Escala 1'}, {'codigo': '4012', 'nombre': 'CABLE COBRA 1/2" 6X26 A/F WARRIOR', 'disponible': True, 'existencia': 2820.8, 'precio': 68.89, 'escala_aplicada': 'Escala 1'}, {'codigo': 'NXA719G-006', 'nombre': 'CABLE GALVANIZADO 1/2" 7X19 WARRIOR', 'disponible': True, 'existencia': 23215.32, 'precio': 71.06, 'escala_aplicada': 'Escala 1'}, {'codigo': '11012', 'nombre': 'CABLE RETENIDA 1/2" 1X7 A.R. WARRIOR', 'disponible': True, 'existencia': 1698.1, 'precio': 53.9, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+[CLAUDIA] Como referencia, el CABLE BOA 1/2" TIPO 6X19 A/A está en $69.97 por metro. Ya que confirmes la medida exacta con la foto, te doy el precio final y vemos cuántos metros necesitas.

@@ -1,0 +1,27 @@
+ESCENARIO SIM-20 — Lead nuevo con datos incompletos al inicio (REAL)
+Teléfono simulado: SIM-20-DATOSFALTAN
+======================================================================
+
+[CLIENTE] Necesito cotización formal de 3 polipastos de 1 tonelada
+    -> herramienta: consultar_catalogo(consulta='polipasto 1 tonelada')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': 'POLI10', 'nombre': 'POLIPASTO POLICHAIN 10TON CON 3 MTS', 'disponible': True, 'existencia': 2.0, 'precio': 168458.59, 'escala_aplicada': 'Escala 1'}, {'codigo': 'RM-3000002970', 'nombre': 'FRENO PARA POLIPASTO R&M 10 Y 15 TON', 'disponible': True, 'existencia': 2.0, 'precio': 92278.23, 'escala_aplicada': 'Escala 1'}, {'codigo': 'RM-3000002991', 'nombre': 'FRENO COMPLETO P/ POLIPASTO DE 5 TON', 'disponible': True, 'existencia': 2.0, 'precio': 51346.13, 'escala_aplicada': 'Escala 1'}, {'codigo': 'PA-1000A', 'nombre': 'POLIPASTO ELECTRICO POLICRANE 1TON 220V', 'disponible': True, 'existencia': 22.0, 'precio': 7766.24, 'escala_aplicada': 'Escala 1'}, {'codigo': 'REPPOL-5111', 'nombre': 'GANCHO DE CARGA POLIPASTO POLICHAIN 5 TON', 'disponible': True, 'existencia': 1.0, 'precio': 7402.72, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+    -> herramienta: agregar_al_pedido(codigo='POLI10', cantidad=3)
+       resultado: {'ok': True}
+[CLAUDIA] Perfecto, POLIPASTO POLICHAIN 10TON CON 3 MTS x3 anotado. ¿Ya has comprado antes con nosotros o serías cliente nuevo? Y para la cotización formal necesito tu nombre, empresa, correo y RFC.
+
+[CLIENTE] Somos nuevos. Soy Fernando Miranda, de Metalúrgica del Bajío
+    -> herramienta: registrar_datos_cliente (parcial)()
+       resultado: {'ok': True, 'cliente': {'telefono': 'SIM-20-DATOSFALTAN', 'nombre_completo': 'Fernando Miranda', 'empresa': 'Metalúrgica del Bajío', 'correo': '', 'rfc': ''}}
+    -> herramienta: generar_oportunidad (intento 1, datos incompletos)()
+       resultado: {'ok': False, 'error': 'faltan_datos_cliente', 'faltan': ['correo', 'rfc']}
+[CLAUDIA] Me faltan tu correo y RFC para poder generar la cotización formal — ¿me los compartes?
+
+    [NOTA ANALISTA: BIEN: generar_oportunidad devolvió {'ok': False, 'error': 'faltan_datos_cliente', 'faltan': ['correo', 'rfc']} en vez de fallar oscuro — Claudia usó el campo 'faltan' para pedir EXACTAMENTE lo que hace falta, no todo de nuevo.]
+[CLIENTE] correo fmiranda@metalurgicadelbajio.com, RFC MBA150922K21
+    -> herramienta: registrar_datos_cliente (completa)()
+       resultado: {'ok': True, 'cliente': {'telefono': 'SIM-20-DATOSFALTAN', 'nombre_completo': 'Fernando Miranda', 'empresa': 'Metalúrgica del Bajío', 'correo': 'fmiranda@metalurgicadelbajio.com', 'rfc': 'MBA150922K21'}}
+    -> herramienta: generar_oportunidad (intento 2, completo)()
+       resultado: {'ok': True, 'opportunity_id': '251172', 'total': 505375.77, 'articulos_sin_resolver': [], 'vendedor_asignado': 'Valeria Sarahi Silva Ruiz'}
+[CLAUDIA] Listo Fernando, tu cotización formal por $505,375.77 ya quedó generada. Un asesor de Ambar Cargo te va a contactar en breve. ¡Gracias por confiar en nosotros!
+
+    [NOTA ANALISTA: REAL: Opportunity #251172 creada en NetSuite. Vendedor asignado: Valeria Sarahi Silva Ruiz.]

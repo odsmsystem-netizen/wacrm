@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Claudia — Ambar Cargo</title>
+<style>
+  :root{
+    --brand:#1e4d7b; --brand-d:#153a5e; --accent:#2f6fed; --green:#78b41a; --green-d:#5f9412;
+    --rojo:#d64550; --verde:#1f9d6b; --ambar:#c8860d;
+    --r:14px; --r-sm:9px;
+    --shadow:0 1px 3px rgba(22,35,61,.06),0 4px 14px rgba(22,35,61,.05);
+    --shadow-h:0 10px 30px rgba(22,35,61,.13);
+    --ease:cubic-bezier(.4,0,.2,1);
+    --bg:#eef1f7; --card:#ffffff; --txt:#1c2740; --muted:#6b7688; --line:#e6eaf2;
+    --heading:#16233d; --chip:#f5f7fb; --sidebar:#101a2e; --sidebar-hover:#182742;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1724; --card:#182231; --txt:#dfe6f1; --muted:#93a0b5; --line:#28344c;
+    --heading:#eaf0fb; --chip:#1c2740; --sidebar:#0a1120; --sidebar-hover:#16223a;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.32);
+    --shadow-h:0 12px 34px rgba(0,0,0,.5);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Segoe UI',system-ui,Arial,sans-serif; background:var(--bg); color:var(--txt);
+        font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+  @media(prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } }
+
+  /* ===== Login ===== */
+  #login{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+          background:linear-gradient(135deg,var(--sidebar),var(--brand-d)); z-index:100; }
+  #login .caja{ background:var(--card); border-radius:var(--r); padding:36px 34px; width:min(360px,90vw);
+                box-shadow:var(--shadow-h); text-align:center; animation:aparece .4s var(--ease); }
+  #login h1{ font-size:19px; color:var(--heading); margin-bottom:4px; }
+  #login p{ font-size:12.5px; color:var(--muted); margin-bottom:22px; }
+  #login input{ width:100%; padding:11px 14px; border:1px solid var(--line); border-radius:var(--r-sm);
+                font-size:14px; background:var(--bg); color:var(--txt); margin-bottom:12px; }
+  #login input:focus{ outline:2px solid rgba(47,111,237,.3); border-color:var(--accent); }
+  #login button{ width:100%; padding:11px; border:none; border-radius:var(--r-sm); background:var(--accent);
+                 color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:.15s; }
+  #login button:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  #login .err{ color:var(--rojo); font-size:12.5px; margin-top:10px; min-height:16px; }
+  #login.oculto{ display:none; }
+
+  /* ===== Shell ===== */
+  #shell{ display:flex; min-height:100vh; }
+  #shell.oculto{ display:none; }
+
+  aside{ width:230px; flex:0 0 230px; background:var(--sidebar); color:#c9d3e6; display:flex;
+         flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  aside .marca{ padding:20px 20px 16px; display:flex; align-items:center; gap:10px; }
+  aside .marca b{ color:#fff; font-size:15px; }
+  aside .marca .sub{ font-size:10.5px; color:#7d8bab; }
+  aside nav{ display:flex; flex-direction:column; gap:2px; padding:8px 12px; flex:1; }
+  aside .item{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--r-sm);
+               cursor:pointer; font-size:13px; font-weight:600; color:#aab6cf; transition:.15s var(--ease);
+               border:none; background:none; text-align:left; width:100%; }
+  aside .item:hover{ background:var(--sidebar-hover); color:#fff; }
+  aside .item.activo{ background:linear-gradient(135deg,var(--accent),#1e4d7b); color:#fff;
+                       box-shadow:0 3px 10px rgba(47,111,237,.35); }
+  aside .item .ico{ width:18px; text-align:center; }
+  aside .pie{ padding:14px 20px; font-size:11px; color:#5c6a8a; border-top:1px solid rgba(255,255,255,.06); }
+  aside .pie button{ background:none; border:none; color:#8fa0c4; cursor:pointer; font-size:11.5px;
+                      text-decoration:underline; padding:0; margin-top:6px; }
+
+  main{ flex:1; padding:26px 30px 60px; max-width:1320px; }
+  .encabezado{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;
+               flex-wrap:wrap; gap:12px; }
+  .encabezado h2{ font-size:20px; color:var(--heading); font-weight:800; letter-spacing:-.2px; }
+  .encabezado .sub{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .theme-btn{ background:var(--card); border:1px solid var(--line); width:36px; height:36px; border-radius:10px;
+              cursor:pointer; font-size:15px; box-shadow:var(--shadow); }
+
+  .seccion{ display:none; animation:aparece .32s var(--ease); }
+  .seccion.activa{ display:block; }
+  @keyframes aparece{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+  /* ===== Componentes ===== */
+  .grid-kpi{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:22px; }
+  .kpi{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px;
+        box-shadow:var(--shadow); transition:transform .2s var(--ease),box-shadow .2s; position:relative; overflow:hidden; }
+  .kpi:before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--tono,var(--accent)); }
+  .kpi:hover{ transform:translateY(-2px); box-shadow:var(--shadow-h); }
+  .kpi .lbl{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .kpi .val{ font-size:27px; font-weight:800; color:var(--heading); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .kpi .ctx{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+
+  .tarjeta{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
+            padding:20px 22px; margin-bottom:20px; }
+  .tarjeta h3{ font-size:14px; color:var(--heading); font-weight:700; margin-bottom:14px; display:flex;
+               align-items:center; gap:8px; justify-content:space-between; }
+  .tarjeta h3 .acciones{ display:flex; gap:8px; }
+
+  label.campo{ display:block; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+               color:var(--muted); margin-bottom:5px; margin-top:14px; }
+  label.campo:first-child{ margin-top:0; }
+  input[type=text], input[type=email], input[type=tel], input[type=url], textarea, select{
+    width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:var(--r-sm); font-size:13.5px;
+    background:var(--bg); color:var(--txt); font-family:inherit; }
+  textarea{ min-height:200px; resize:vertical; line-height:1.5; }
+  input:focus, textarea:focus, select:focus{ outline:2px solid rgba(47,111,237,.25); border-color:var(--accent); }
+
+  .btn{ padding:9px 16px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; border:none;
+        transition:.16s var(--ease); display:inline-flex; align-items:center; gap:6px; }
+  .btn--primario{ background:linear-gradient(135deg,var(--green),var(--green-d)); color:#fff; box-shadow:0 3px 10px rgba(120,180,26,.3); }
+  .btn--primario:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+  .btn--secundario{ background:var(--chip); color:var(--txt); border:1px solid var(--line); }
+  .btn--secundario:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn--peligro{ background:#fdecec; color:var(--rojo); border:1px solid #f5c6cb; }
+  .btn--peligro:hover{ background:var(--rojo); color:#fff; }
+  .btn:disabled{ opacity:.55; cursor:progress; }
+  .btn--sm{ padding:5px 11px; font-size:11.5px; }
+
+  .pill{ font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:999px; text-transform:uppercase;
+         letter-spacing:.03em; display:inline-flex; align-items:center; gap:4px; }
+  .pill--ok{ background:#ECFDF5; color:var(--verde); } .pill--err{ background:#FEF2F2; color:var(--rojo); }
+  .pill--info{ background:#eef4ff; color:var(--accent); } .pill--warn{ background:#FEF3C7; color:var(--ambar); }
+
+  .barra{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .tabla-wrap{ overflow-x:auto; border-radius:var(--r-sm); border:1px solid var(--line); max-height:440px; overflow-y:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
+  th,td{ padding:9px 12px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+  th{ background:var(--heading); color:#fff; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;
+      position:sticky; top:0; z-index:1; }
+  tbody tr{ transition:.1s; } tbody tr:hover{ background:var(--chip); }
+  td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  td.ellipsis{ max-width:260px; overflow:hidden; text-overflow:ellipsis; }
+
+  .vacio{ text-align:center; padding:34px 20px; color:var(--muted); font-size:13px; }
+  .cargando{ text-align:center; padding:34px 20px; color:var(--muted); }
+  .spin{ width:22px; height:22px; border:2.5px solid var(--line); border-top-color:var(--accent); border-radius:50%;
+         margin:0 auto 10px; animation:rot .7s linear infinite; }
+  @keyframes rot{ to{ transform:rotate(360deg); } }
+
+  .toast{ position:fixed; bottom:22px; right:22px; background:var(--heading); color:#fff; padding:12px 18px;
+          border-radius:10px; font-size:13px; box-shadow:var(--shadow-h); z-index:50; opacity:0; transform:translateY(10px);
+          transition:.25s var(--ease); pointer-events:none; }
+  .toast.vis{ opacity:1; transform:none; }
+  .toast.err{ background:var(--rojo); }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media(max-width:900px){ .grid2{ grid-template-columns:1fr; } #shell{ flex-direction:column; }
+    aside{ width:100%; flex:none; height:auto; position:static; }
+    aside nav{ flex-direction:row; overflow-x:auto; } main{ padding:18px; } }
+
+  .kfila{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dashed var(--line); }
+  .kfila:last-child{ border-bottom:none; }
+  .kfila .n{ flex:1; font-weight:600; font-size:13px; }
+  .kfila .n small{ display:block; font-weight:400; color:var(--muted); font-size:11px; }
+
+  .file-drop{ border:2px dashed var(--line); border-radius:var(--r-sm); padding:22px; text-align:center;
+              color:var(--muted); font-size:12.5px; cursor:pointer; transition:.15s; }
+  .file-drop:hover, .file-drop.hover{ border-color:var(--accent); background:var(--chip); color:var(--accent); }
+
+  .mini-chart{ display:flex; align-items:flex-end; gap:4px; height:64px; margin-top:10px; }
+  .mini-chart .barra-d{ flex:1; background:linear-gradient(180deg,var(--accent),var(--brand)); border-radius:3px 3px 0 0;
+                         min-height:2px; transition:height .5s var(--ease); position:relative; }
+  .mini-chart .barra-d:hover{ filter:brightness(1.15); }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="caja">
+    <h1>Panel de Claudia</h1>
+    <p>Ambar Cargo · Administración del agente</p>
+    <input type="text" id="in-user" placeholder="Usuario" autocomplete="username" value="admin">
+    <input type="password" id="in-pass" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btn-login">Entrar</button>
+    <div class="err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="shell" class="oculto">
+  <aside>
+    <div class="marca"><span style="font-size:20px">🤖</span>
+      <div><b>Claudia</b><div class="sub">Panel · Ambar Cargo</div></div>
+    </div>
+    <nav id="nav">
+      <button class="item activo" data-sec="resumen"><span class="ico">📊</span> Resumen</button>
+      <button class="item" data-sec="config"><span class="ico">⚙️</span> Parámetros del agente</button>
+      <button class="item" data-sec="conocimiento"><span class="ico">📚</span> Conocimiento</button>
+      <button class="item" data-sec="catalogo"><span class="ico">📦</span> Catálogo NetSuite</button>
+      <button class="item" data-sec="vendedores"><span class="ico">👥</span> Vendedores</button>
+      <button class="item" data-sec="indicadores"><span class="ico">📈</span> Indicadores</button>
+      <button class="item" data-sec="aprendizaje"><span class="ico">🧠</span> Centro de Aprendizaje</button>
+      <button class="item" data-sec="usuarios"><span class="ico">🔐</span> Usuarios</button>
+    </nav>
+    <div class="pie">Sesión activa
+      <button id="btn-logout">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="encabezado">
+      <div><h2 id="titulo-sec">Resumen</h2><div class="sub" id="subtitulo-sec">Vista general de la actividad de Claudia</div></div>
+      <button class="theme-btn" id="theme-btn" title="Cambiar tema">🌙</button>
+    </div>
+
+    <section class="seccion activa" id="sec-resumen"></section>
+    <section class="seccion" id="sec-config"></section>
+    <section class="seccion" id="sec-conocimiento"></section>
+    <section class="seccion" id="sec-catalogo"></section>
+    <section class="seccion" id="sec-vendedores"></section>
+    <section class="seccion" id="sec-indicadores"></section>
+    <section class="seccion" id="sec-aprendizaje"></section>
+    <section class="seccion" id="sec-usuarios"></section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/admin/app.js"></script>
+</body>
+</html>

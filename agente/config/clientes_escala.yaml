@@ -1,0 +1,14 @@
+# Excepciones de escala de precio por cliente — Ambar Cargo
+#
+# Por default TODOS los clientes ven Escala 1. Si un cliente tiene una escala
+# negociada distinta, agrégalo aquí con su número de WhatsApp EXACTO como
+# llega en los mensajes (con código de país, sin "whatsapp:", ej: 5215512345678).
+#
+# Escalas válidas: "Escala 1", "Escala 2", "Escala 3", "Escala 4", "Escala 5"
+#
+# Ejemplo (elimina el # para activarlo):
+# clientes:
+#   "5215512345678": "Escala 2"
+#   "5215598765432": "Escala 1"
+
+clientes: {}

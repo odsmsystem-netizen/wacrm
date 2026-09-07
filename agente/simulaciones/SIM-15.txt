@@ -1,0 +1,23 @@
+ESCENARIO SIM-15 — Cliente regresa por un pedido que dejó a medias
+Teléfono simulado: SIM-15-REGRESA
+======================================================================
+
+    [NOTA ANALISTA: (Contexto previo simulado: en un mensaje de días atrás ya se había agregado CADENA A R GRADO 80 1/2" x20 al carrito, sin cerrar el pedido.)]
+[CLIENTE] Hola, disculpa la tardanza, en que había quedado mi pedido de la cadena?
+    -> herramienta: ver_pedido_actual()
+       resultado: {'ok': True, 'articulos': [{'id': 20, 'codigo': '5050623', 'nombre_articulo': 'CADENA A R GRADO 80 1/2"', 'cantidad': 20.0, 'precio_unitario': 360.35, 'subtotal': 7207.0}], 'total': 7207.0}
+[CLAUDIA] Ninguna prisa. Tienes pendiente:
+- CADENA A R GRADO 80 1/2" x20.0 — $7,207.00
+Total: $7,207.00
+¿Lo confirmamos así o quieres ajustar algo?
+
+[CLIENTE] Se me habia olvidado, si mejor confirmalo y agrega 5 grilletes de 1/2 tambien
+    -> herramienta: consultar_catalogo(consulta='grillete 1/2')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': 'SH209-006', 'nombre': 'GRILLETE REFORZADO 1/2" .', 'disponible': True, 'existencia': 535.0, 'precio': 40.65, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018455', 'nombre': 'GRILLETE CROSBY G-209 1/2"', 'disponible': True, 'existencia': 146.0, 'precio': 280.51, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018614', 'nombre': 'GRILLETE CROSBY G-209 1 1/2"', 'disponible': True, 'existencia': 12.0, 'precio': 4403.1, 'escala_aplicada': 'Escala 1'}, {'codigo': '8-837-13', 'nombre': 'GRILLETE YOKE MOD. DA-837 1/2"', 'disponible': True, 'existencia': 2.0, 'precio': 277.2, 'escala_aplicada': 'Escala 1'}, {'codigo': 'SH209-006A', 'nombre': 'GRILLETE REFORZADO 1/2"', 'disponible': False, 'existencia': 0.0, 'precio': 95.87, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+    -> herramienta: agregar_al_pedido(codigo='SH209-006', cantidad=5)
+       resultado: {'ok': True}
+    -> herramienta: confirmar_pedido()
+       resultado: {'ok': True, 'articulos': 2, 'total': 7410.25}
+[CLAUDIA] Listo, quedó todo confirmado: 2 artículos por $7,410.25 en total. En breve te contactan para coordinar entrega. ¡Gracias por tu paciencia!
+
+    [NOTA ANALISTA: BIEN: el carrito persiste correctamente entre 'sesiones' (no se perdió nada de lo agregado antes), y permitió agregar un artículo nuevo antes de cerrar. Esto valida que agent/memory.py mantiene estado real por teléfono, no solo por conversación activa en memoria.]

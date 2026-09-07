@@ -1,0 +1,26 @@
+ESCENARIO SIM-01 — Cliente indeciso / no sabe qué comprar
+Teléfono simulado: SIM-01-INDECISO
+======================================================================
+
+[CLIENTE] Hola buenas, necesito algo para levantar un motor pesado en mi taller, no sé bien qué necesito
+[CLAUDIA] ¡Hola! Bienvenido a Ambar Cargo, soy Claudia 😊 Con gusto te ayudo a encontrar el equipo correcto. Para no ofrecerte algo de más o de menos: ¿de cuántos kilos aproximadamente es el motor, y a qué altura lo necesitas levantar?
+
+[CLIENTE] Pesa como 800 kilos y lo tengo que subir apenas 2 metros
+    -> herramienta: consultar_catalogo(consulta='polipasto electrico')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': 'PA-1000A', 'nombre': 'POLIPASTO ELECTRICO POLICRANE 1TON 220V', 'disponible': True, 'existencia': 22.0, 'precio': 7766.24, 'escala_aplicada': 'Escala 1'}, {'codigo': 'PA-600B', 'nombre': 'POLIPASTO ELECTRICO POLICRANE 600KGS 110V', 'disponible': True, 'existencia': 23.0, 'precio': 5214.21, 'escala_aplicada': 'Escala 1'}, {'codigo': '1120SHOW', 'nombre': 'POLIPASTO ELECTRICO PARA ESCENARIO CAP 1120KG', 'disponible': True, 'existencia': 1.0, 'precio': 49803.39, 'escala_aplicada': 'Escala 1'}, {'codigo': 'PER2', 'nombre': 'POLIPASTO ELECTRICO DE CADENA POLIMAX 2 TON 3 MTS ELEVACION', 'disponible': True, 'existencia': 7.0, 'precio': 44973.95, 'escala_aplicada': 'Escala 1'}, {'codigo': 'PER1', 'nombre': 'POLIPASTO ELECTRICO DE CADENA POLIMAX 1 TON 3 MTS ELEVACION', 'disponible': True, 'existencia': 6.0, 'precio': 29806.56, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+[CLAUDIA] Para 800 kg y esa altura te recomiendo un polipasto eléctrico — es justo para eso, no necesitas nada más grande. Tengo el POLIPASTO ELECTRICO POLICRANE 1TON 220V (código PA-1000A), con capacidad de 1 tonelada así que te deja margen de sobra. Está en $7,766.24 y sí tengo existencia. ¿Te late esa opción?
+
+[CLIENTE] ¿Y ese trae control remoto o es con cadena para subir y bajar?
+[CLAUDIA] Buena pregunta — esa ficha técnica específica no la tengo a la mano en este momento (el catálogo me da precio y existencia, no el detalle de operación). No quiero decirte algo que no esté seguro sea correcto: te conecto con un asesor técnico que te confirma eso mismo y cualquier otra duda de instalación, ¿te parece?
+
+    [NOTA ANALISTA: BIEN: no inventó la ficha técnica (regla del prompt cumplida). MEJORA POSIBLE: no ofreció una acción concreta (crear un lead / ticket) para que ese seguimiento realmente ocurra — solo dijo 'te conecto' sin ejecutar ninguna herramienta. Riesgo: la promesa queda en el aire y nadie le da seguimiento de verdad.]
+[CLIENTE] Ok pues mejor así, apártamelo y que me hablen para confirmar lo del control
+    -> herramienta: agregar_al_pedido(codigo='PA-1000A', cantidad=1)
+       resultado: {'ok': True, 'articulo': 'POLIPASTO ELECTRICO POLICRANE 1TON 220V', 'cantidad': 1, 'precio_unitario': 7766.24, 'escala_aplicada': 'Escala 1'}
+    -> herramienta: registrar_interes_venta(interes='...')
+       resultado: {'ok': True, 'lead_id': 2}
+[CLAUDIA] Listo, te lo dejé apartado y ya anoté tu duda para que el asesor te confirme lo del control junto con la disponibilidad. En un rato te contactan. ¿Algo más en lo que te pueda ayudar mientras tanto?
+
+    [NOTA ANALISTA: CORRECCIÓN DE RUMBO: en el turno anterior no ejecuté ninguna herramienta cuando dije 'te conecto con un asesor' — aquí sí until que el cliente confirmó que quería apartar. Esto es un patrón de riesgo real: si el cliente NO hubiera vuelto a escribir, la promesa de 'te conecto' se habría quedado sin ningún registro.]
+[CLIENTE] No, gracias, eso era todo
+[CLAUDIA] Perfecto, con gusto. Que tengas buen día 🙌

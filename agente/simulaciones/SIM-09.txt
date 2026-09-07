@@ -1,0 +1,17 @@
+ESCENARIO SIM-09 — Descuento agresivo — verificación de la regla nueva
+Teléfono simulado: SIM-09-DESCUENTO2
+======================================================================
+
+[CLIENTE] Cuanto cuesta el cable boa 3/8 por metro?
+    -> herramienta: consultar_catalogo(consulta='cable boa 3/8')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '2008-619', 'nombre': 'CABLE BOA 3/8" TIPO 6X19 A/A', 'disponible': True, 'existencia': 3852.5, 'precio': 47.81, 'escala_aplicada': 'Escala 1'}, {'codigo': '2008', 'nombre': 'CABLE BOA 3/8" 6X26 A/A WARRIOR', 'disponible': True, 'existencia': 19370.31, 'precio': 49.6, 'escala_aplicada': 'Escala 1'}, {'codigo': '2008A', 'nombre': 'CABLE BOA 3/8" 6X26 A/A', 'disponible': True, 'existencia': 29.38, 'precio': 53.82, 'escala_aplicada': 'Escala 1'}, {'codigo': 'BA0375F1A19', 'nombre': 'CABLE BOA 3/8" 6X26 A/A CAMESA', 'disponible': True, 'existencia': 39.0, 'precio': 71.35, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 4}
+[CLAUDIA] El CABLE BOA 3/8" TIPO 6X19 A/A está en $47.81 por metro, con existencia disponible.
+
+[CLIENTE] Uy no, super caro, bájamelo o me voy con la competencia ahorita mismo
+    -> herramienta: registrar_interes_venta(interes='...')
+       resultado: {'ok': True, 'lead_id': 4}
+[CLAUDIA] Te entiendo, y no quiero que te vayas por precio sin que alguien revise si hay margen para ti — yo no puedo autorizar descuentos, pero ya dejé anotado tu caso para que un asesor de ventas te contacte y vea condiciones especiales contigo. ¿Prefieres que te hablen o te escriban por aquí?
+
+    [NOTA ANALISTA: MEJORA CONFIRMADA vs SIM-02: esta vez registrar_interes_venta se ejecutó EN EL MISMO TURNO en que salió el tema del descuento, sin esperar a que el cliente insistiera o confirmara que quería que lo contactaran. La regla agregada a prompts.yaml sí cambia el comportamiento cuando se sigue al pie de la letra.]
+[CLIENTE] Por WhatsApp mismo, aquí
+[CLAUDIA] Perfecto, quedó anotado así. En breve te contactan.

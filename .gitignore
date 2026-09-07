@@ -45,3 +45,28 @@ next-env.d.ts
 
 # Supabase CLI scratch (version cache, local links). Never source.
 supabase/.temp/
+
+# ── El agente (agente/) es Python ───────────────────────────
+# Bases de datos locales del agente: memoria de conversaciones y el
+# catalogo sincronizado desde NetSuite. Llevan datos de clientes y este
+# repositorio es publico — nunca deben versionarse.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+# Cache y entornos de Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+# Salidas del agente: transcripciones que se adjuntan a los avisos y logs
+agente/transcripts/
+agente/logs/
+agente/respaldos/
+# Credenciales de NetSuite del agente (OAuth1). El .example si se versiona.
+agente/scripts/config.ini
+
+# Binarios descargados (cloudflared pesa 52 MB y ya no se usa:
+# el agente habla con el CRM por la red interna, sin tunel).
+agente/bin/

@@ -1,0 +1,52 @@
+# Vendedores de Ambar Cargo — WhatsApp + cruce con NetSuite
+#
+# Se usa para dos cosas:
+#   1. Sorteo aleatorio: cuando un LEAD NUEVO genera una oportunidad, Claudia
+#      sortea un vendedor de esta lista (todos menos "AMBAR CARGO", la cuenta
+#      casa, que no aparece aquí) y le avisa por WhatsApp.
+#   2. Canalización directa: cuando quien escribe YA es cliente de alguien
+#      (verificar_cliente_existente encuentra su salesrep_id en NetSuite),
+#      Claudia busca ESE id exacto aquí (no por nombre, para no fallar por
+#      variaciones de escritura) y le avisa a ESE vendedor específico.
+#
+# Llena el campo "whatsapp" de cada quien (con código de país, sin espacios
+# ni signos, ej: 5213331234567). Los que queden en "" se EXCLUYEN del sorteo
+# Y de la canalización directa (no se les puede avisar por WhatsApp si no
+# tienen número) — en ese caso Claudia le avisa al cliente que un asesor lo
+# contactará, y el caso queda solo registrado, sin notificación automática.
+#
+# netsuite_id = employee.id (Setup > Users/Roles > Employees). Ya viene
+# llenado desde la sincronización de NetSuite (issalesrep=T, activos).
+#
+# *** SOLO PARA PRUEBAS EN TERMINAL ***
+# Todos los números de abajo son el MISMO número de prueba (+5213330019019),
+# a propósito, para poder probar el sorteo/canalización sin repartir mensajes
+# reales a los 12 vendedores. El número real de Laura (+523330019003, ya
+# confirmado funcionando con Twilio) quedó reemplazado también — antes de
+# producción hay que volver a poner el número real de cada quien.
+
+vendedores:
+- nombre: Alejandra Castellanos Franco
+  netsuite_id: '147'
+  email: ventas3@ambarcargo.com
+  whatsapp: '+5213330019019'
+- nombre: Jeronimo Guerra Martinez
+  netsuite_id: '112'
+  email: proyectos@ambarcargo.com
+  whatsapp: '+5213330019019'
+- nombre: Jose Ulises Eugenio Velez
+  netsuite_id: '133'
+  email: ventas2@ambarcargo.com
+  whatsapp: '+5213330019019'
+- nombre: Pablo Franco Castellanos
+  netsuite_id: '119'
+  email: pablo@ambarcargo.com
+  whatsapp: '+5213330019019'
+- nombre: Valeria Sarahi Silva Ruiz
+  netsuite_id: '122'
+  email: ventas9@ambarcargo.com
+  whatsapp: '+5213330019019'
+- nombre: Wendy Ariadna Penelope Lopez Reyes
+  netsuite_id: '115'
+  email: ventas4@ambarcargo.com
+  whatsapp: '+5213338316311'

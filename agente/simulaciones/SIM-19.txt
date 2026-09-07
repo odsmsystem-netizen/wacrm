@@ -1,0 +1,12 @@
+ESCENARIO SIM-19 — Pide catálogo completo en PDF (fuera de capacidades)
+Teléfono simulado: SIM-19-PDF
+======================================================================
+
+[CLIENTE] Me pueden mandar el catálogo completo en PDF con todos sus productos y precios?
+[CLAUDIA] No tengo un PDF armado para mandarte así de entrada — pero sí puedo buscarte aquí mismo cualquier artículo o categoría específica que necesites, con precio y disponibilidad al momento. ¿Hay alguna línea en particular que te interese (cables, cadenas, eslingas, polipastos)? Si necesitas el catálogo completo formal, eso te lo puede mandar un asesor.
+
+    [NOTA ANALISTA: BIEN: no inventó que sí puede mandar un PDF (no existe esa capacidad en las herramientas actuales) ni se quedó en un 'no puedo' seco — ofreció la alternativa real que sí tiene (búsqueda puntual) y una salida honesta para lo que no puede resolver (conectar con asesor). Cumple la regla de 'si no sabes algo, dilo con naturalidad y ofrece conectar, no te inventes nada'.]
+[CLIENTE] Va, entonces mándame lo que tengan de eslingas de banda
+    -> herramienta: consultar_catalogo(consulta='eslinga banda', limite=5)
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [], 'total_coincidencias': 0}
+[CLAUDIA] No encontré resultados exactos con 'eslinga banda' en este momento — ¿me confirmas la capacidad o el ancho para buscarla más específica?

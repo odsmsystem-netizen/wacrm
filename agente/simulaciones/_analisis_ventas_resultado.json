@@ -1,0 +1,584 @@
+{
+  "por_grupo": [
+    {
+      "links": [],
+      "grupo": "WARRIOR",
+      "num_transacciones": "35071",
+      "unidades": "7095872.58"
+    },
+    {
+      "links": [],
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "num_transacciones": "27687",
+      "unidades": "1782279.8"
+    },
+    {
+      "links": [],
+      "num_transacciones": "17885",
+      "unidades": "80895"
+    },
+    {
+      "links": [],
+      "grupo": "POLICRANE",
+      "num_transacciones": "13912",
+      "unidades": "123094.73"
+    },
+    {
+      "links": [],
+      "grupo": "ACCESORIOS NACIONALES",
+      "num_transacciones": "10697",
+      "unidades": "421642"
+    },
+    {
+      "links": [],
+      "grupo": "CABLES NACIONALES",
+      "num_transacciones": "8573",
+      "unidades": "2070297.48"
+    },
+    {
+      "links": [],
+      "grupo": "CROSBY",
+      "num_transacciones": "7132",
+      "unidades": "77616"
+    },
+    {
+      "links": [],
+      "grupo": "KINEDYNE",
+      "num_transacciones": "3848",
+      "unidades": "37158"
+    },
+    {
+      "links": [],
+      "grupo": "OTROS",
+      "num_transacciones": "2491",
+      "unidades": "51031.2"
+    },
+    {
+      "links": [],
+      "grupo": "POLICHAIN",
+      "num_transacciones": "1968",
+      "unidades": "21272.96"
+    },
+    {
+      "links": [],
+      "grupo": "CONDUCTIX",
+      "num_transacciones": "1915",
+      "unidades": "51742"
+    },
+    {
+      "links": [],
+      "grupo": "GENERICOS",
+      "num_transacciones": "909",
+      "unidades": "37643.26"
+    },
+    {
+      "links": [],
+      "grupo": "CAMESA",
+      "num_transacciones": "870",
+      "unidades": "2162213.8"
+    },
+    {
+      "links": [],
+      "grupo": "AMBAR",
+      "num_transacciones": "791",
+      "unidades": "2362.5"
+    },
+    {
+      "links": [],
+      "grupo": "YOKE",
+      "num_transacciones": "729",
+      "unidades": "4077"
+    },
+    {
+      "links": [],
+      "grupo": "VIKING",
+      "num_transacciones": "613",
+      "unidades": "4598"
+    },
+    {
+      "links": [],
+      "grupo": "UNICOS",
+      "num_transacciones": "508",
+      "unidades": "17538.06"
+    },
+    {
+      "links": [],
+      "grupo": "HANCAR",
+      "num_transacciones": "480",
+      "unidades": "4041"
+    },
+    {
+      "links": [],
+      "grupo": "SAGA",
+      "num_transacciones": "448",
+      "unidades": "646"
+    },
+    {
+      "links": [],
+      "grupo": "COLUMBUS MCKINNON",
+      "num_transacciones": "441",
+      "unidades": "1561"
+    },
+    {
+      "links": [],
+      "grupo": "DUTTON",
+      "num_transacciones": "401",
+      "unidades": "868"
+    },
+    {
+      "links": [],
+      "grupo": "YALE",
+      "num_transacciones": "397",
+      "unidades": "2025.2"
+    },
+    {
+      "links": [],
+      "grupo": "R&M",
+      "num_transacciones": "395",
+      "unidades": "973"
+    },
+    {
+      "links": [],
+      "grupo": "ALMET",
+      "num_transacciones": "296",
+      "unidades": "660"
+    },
+    {
+      "links": [],
+      "grupo": "GIMBEL",
+      "num_transacciones": "291",
+      "unidades": "2394"
+    },
+    {
+      "links": [],
+      "grupo": "POLICRANE ITALIANO",
+      "num_transacciones": "148",
+      "unidades": "217"
+    },
+    {
+      "links": [],
+      "grupo": "MASSDAM",
+      "num_transacciones": "143",
+      "unidades": "744"
+    },
+    {
+      "links": [],
+      "grupo": "MIKELS",
+      "num_transacciones": "137",
+      "unidades": "151"
+    },
+    {
+      "links": [],
+      "grupo": "KDJ",
+      "num_transacciones": "131",
+      "unidades": "140"
+    },
+    {
+      "links": [],
+      "grupo": "PROCARGA",
+      "num_transacciones": "109",
+      "unidades": "260"
+    },
+    {
+      "links": [],
+      "grupo": "NOVAWINCH",
+      "num_transacciones": "106",
+      "unidades": "110"
+    },
+    {
+      "links": [],
+      "grupo": "POLIMAX",
+      "num_transacciones": "81",
+      "unidades": "310.7"
+    },
+    {
+      "links": [],
+      "grupo": "CATARINAS",
+      "num_transacciones": "38",
+      "unidades": "270"
+    },
+    {
+      "links": [],
+      "grupo": "SIMPLEX",
+      "num_transacciones": "37",
+      "unidades": "48"
+    },
+    {
+      "links": [],
+      "grupo": "PEERLES",
+      "num_transacciones": "32",
+      "unidades": "807.2"
+    },
+    {
+      "links": [],
+      "grupo": "US",
+      "num_transacciones": "26",
+      "unidades": "52"
+    },
+    {
+      "links": [],
+      "grupo": "FELSA",
+      "num_transacciones": "20",
+      "unidades": "44"
+    },
+    {
+      "links": [],
+      "grupo": "HARRINGTON",
+      "num_transacciones": "9",
+      "unidades": "77.5"
+    },
+    {
+      "links": [],
+      "grupo": "UMACON",
+      "num_transacciones": "6",
+      "unidades": "5"
+    },
+    {
+      "links": [],
+      "grupo": "DETROIT",
+      "num_transacciones": "5",
+      "unidades": "72"
+    },
+    {
+      "links": [],
+      "grupo": "YASKAWA",
+      "num_transacciones": "5",
+      "unidades": "10"
+    },
+    {
+      "links": [],
+      "grupo": "HILLMAN",
+      "num_transacciones": "4",
+      "unidades": "14"
+    },
+    {
+      "links": [],
+      "grupo": "ELECTRICARDI",
+      "num_transacciones": "4",
+      "unidades": "24"
+    }
+  ],
+  "por_linea": [
+    {
+      "links": [],
+      "linea": "ACCESORIOS",
+      "num_transacciones": "39692",
+      "unidades": "2304270.8"
+    },
+    {
+      "links": [],
+      "linea": "CABLE",
+      "num_transacciones": "38318",
+      "unidades": "1.129801744E7"
+    },
+    {
+      "links": [],
+      "num_transacciones": "17884",
+      "unidades": "80883"
+    },
+    {
+      "links": [],
+      "linea": "CADENA",
+      "num_transacciones": "8801",
+      "unidades": "159729.23"
+    },
+    {
+      "links": [],
+      "linea": "EQUIPOS DE CARGA Y LEVANTE",
+      "num_transacciones": "8029",
+      "unidades": "25119"
+    },
+    {
+      "links": [],
+      "linea": "SISTEMAS DE CARGA Y LEVANTE",
+      "num_transacciones": "7630",
+      "unidades": "52432"
+    },
+    {
+      "links": [],
+      "linea": "SUJECION Y CONTROL DE CARGA",
+      "num_transacciones": "4366",
+      "unidades": "43547.8"
+    },
+    {
+      "links": [],
+      "linea": "SISTEMAS DE ELECTRIFICACION",
+      "num_transacciones": "3758",
+      "unidades": "84088"
+    },
+    {
+      "links": [],
+      "linea": "REFACCION",
+      "num_transacciones": "1790",
+      "unidades": "6032"
+    },
+    {
+      "links": [],
+      "linea": "EQUIPOS DE ARRASTRE",
+      "num_transacciones": "1333",
+      "unidades": "2896"
+    },
+    {
+      "links": [],
+      "linea": "HERRAMIENTAS HIDRAULICAS",
+      "num_transacciones": "126",
+      "unidades": "158"
+    },
+    {
+      "links": [],
+      "linea": "TRANSMISION DE POTENCIA",
+      "num_transacciones": "121",
+      "unidades": "440.7"
+    },
+    {
+      "links": [],
+      "linea": "PROYECTOS",
+      "num_transacciones": "70",
+      "unidades": "89"
+    },
+    {
+      "links": [],
+      "linea": "ESTROBOS Y SUPERESTROBOS",
+      "num_transacciones": "62",
+      "unidades": "156"
+    }
+  ],
+  "top_items": [
+    {
+      "links": [],
+      "codigo": "MO",
+      "nombre": "MANO DE OBRA",
+      "num_transacciones": "9548",
+      "unidades": "38866"
+    },
+    {
+      "links": [],
+      "codigo": "KIT ESTROBO",
+      "nombre": "KIT ESTROBO",
+      "num_transacciones": "3209",
+      "unidades": "15407"
+    },
+    {
+      "links": [],
+      "codigo": "ANTICIPO PESOS",
+      "nombre": "ANTICIPO PESOS",
+      "num_transacciones": "3003",
+      "unidades": "3064"
+    },
+    {
+      "links": [],
+      "codigo": "NXA719G-005",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE GALVANIZADO 3/8\" 7X19 WARRIOR",
+      "num_transacciones": "2569",
+      "unidades": "544138.52"
+    },
+    {
+      "links": [],
+      "codigo": "5050423",
+      "grupo": "WARRIOR",
+      "nombre": "CADENA A.R. GRADO 80 3/8\"",
+      "num_transacciones": "2458",
+      "unidades": "42784.38"
+    },
+    {
+      "links": [],
+      "codigo": "COMISIONTJ",
+      "nombre": "COMISION TARJETA",
+      "num_transacciones": "1943",
+      "unidades": "1913"
+    },
+    {
+      "links": [],
+      "codigo": "SH450C2-006",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "PERRO GALV. 3/8\" IMP.",
+      "num_transacciones": "1793",
+      "unidades": "171636"
+    },
+    {
+      "links": [],
+      "codigo": "SH450C2-003",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "PERRO GALV. 3/16\" IMP.",
+      "num_transacciones": "1678",
+      "unidades": "212734"
+    },
+    {
+      "links": [],
+      "codigo": "NXA719G-002",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE GALVANIZADO 3/16\" 7X19 WARRIOR",
+      "num_transacciones": "1655",
+      "unidades": "381008"
+    },
+    {
+      "links": [],
+      "codigo": "2012",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE BOA 1/2\" 6X26 A/A WARRIOR",
+      "num_transacciones": "1529",
+      "unidades": "83417.4"
+    },
+    {
+      "links": [],
+      "codigo": "NXA719G-003",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE GALVANIZADO 1/4\" 7X19 WARRIOR",
+      "num_transacciones": "1490",
+      "unidades": "607659.2"
+    },
+    {
+      "links": [],
+      "codigo": "SH450C2-004",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "PERRO GALV. 1/4\" IMP.",
+      "num_transacciones": "1364",
+      "unidades": "118202"
+    },
+    {
+      "links": [],
+      "codigo": "DS-122",
+      "grupo": "POLICRANE",
+      "nombre": "ESLINGA DE POLIESTER DE 2 TON X 2 MTS.OJO/OJO F.S. 7:1 C",
+      "num_transacciones": "1363",
+      "unidades": "6298"
+    },
+    {
+      "links": [],
+      "codigo": "2016",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE BOA 5/8\" 6X26 A/A WARRIOR",
+      "num_transacciones": "1361",
+      "unidades": "113581.5"
+    },
+    {
+      "links": [],
+      "codigo": "2008",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE BOA 3/8\" 6X26 A/A WARRIOR",
+      "num_transacciones": "1337",
+      "unidades": "84372.96"
+    },
+    {
+      "links": [],
+      "codigo": "513084",
+      "grupo": "KINEDYNE",
+      "nombre": "TENSOR ACERO C/BANDA USO TEC.2PULG.30 FTCON GANCHO DE ALAMBRE 1",
+      "num_transacciones": "1298",
+      "unidades": "6801"
+    },
+    {
+      "links": [],
+      "codigo": "423021",
+      "grupo": "KINEDYNE",
+      "nombre": "BANDA USO TECNICO C/GANCHO 4\" X 30 FT KINEDYNE",
+      "num_transacciones": "1297",
+      "unidades": "12750"
+    },
+    {
+      "links": [],
+      "codigo": "NXA719G-003A",
+      "grupo": "CABLES NACIONALES",
+      "nombre": "CABLE GALVANIZADO 1/4\" 7X19 NACIONAL",
+      "num_transacciones": "1184",
+      "unidades": "522131.12"
+    },
+    {
+      "links": [],
+      "codigo": "SH450C2-008",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "PERRO GALV. 1/2\" IMP.",
+      "num_transacciones": "1171",
+      "unidades": "44688"
+    },
+    {
+      "links": [],
+      "codigo": "1027285",
+      "grupo": "CROSBY",
+      "nombre": "GANCHO TRABA C/EXTREMO QUIJADA 3/8\" A-330 CROSBY",
+      "num_transacciones": "1157",
+      "unidades": "5330"
+    },
+    {
+      "links": [],
+      "codigo": "SH450C2-002",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "PERRO GALV. 1/8\" IMP.",
+      "num_transacciones": "1142",
+      "unidades": "264476"
+    },
+    {
+      "links": [],
+      "codigo": "DS-146",
+      "grupo": "POLICRANE",
+      "nombre": "ESLINGA DE POLIESTER DE 4 TON X 6 MTS.OJO/OJO F.S. 7:1 COL",
+      "num_transacciones": "1139",
+      "unidades": "5238"
+    },
+    {
+      "links": [],
+      "codigo": "SH414-003",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "GUARDACABO REF. 3/8\" IMP.",
+      "num_transacciones": "1050",
+      "unidades": "11355"
+    },
+    {
+      "links": [],
+      "codigo": "4058008",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "CASQUILLO DE ACERO 3/8\" IMP.",
+      "num_transacciones": "1050",
+      "unidades": "11006"
+    },
+    {
+      "links": [],
+      "codigo": "DS-136",
+      "grupo": "POLICRANE",
+      "nombre": "ESLINGA DE POLIESTER DE 3 TON X 6 MTS.OJO/OJO F.S. 7:1 COL",
+      "num_transacciones": "1031",
+      "unidades": "3838"
+    },
+    {
+      "links": [],
+      "codigo": "NXA77G-001",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE GALVANIZADO 1/16\" 7X7 WARRIOR",
+      "num_transacciones": "1027",
+      "unidades": "495854"
+    },
+    {
+      "links": [],
+      "codigo": "KT-GU6",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "GUARDACABO GALV. 3/16\" IMP.",
+      "num_transacciones": "977",
+      "unidades": "17203"
+    },
+    {
+      "links": [],
+      "codigo": "HS-MANDO",
+      "grupo": "POLICRANE",
+      "nombre": "CADENA DE MANDO",
+      "num_transacciones": "944",
+      "unidades": "22563.4"
+    },
+    {
+      "links": [],
+      "codigo": "4058010",
+      "grupo": "ACCESORIOS IMPORTADOS",
+      "nombre": "CASQUILLO DE ACERO 1/2\" IMP.",
+      "num_transacciones": "925",
+      "unidades": "5765.8"
+    },
+    {
+      "links": [],
+      "codigo": "NXA719G-004",
+      "grupo": "WARRIOR",
+      "nombre": "CABLE GALVANIZADO 5/16\" 7X19 WARRIOR",
+      "num_transacciones": "918",
+      "unidades": "147406.72"
+    }
+  ]
+}

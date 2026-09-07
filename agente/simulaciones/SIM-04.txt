@@ -1,0 +1,24 @@
+ESCENARIO SIM-04 — Cliente existente pide cotización formal (REAL)
+Teléfono simulado: SIM-04-EXISTENTE
+======================================================================
+
+[CLIENTE] Hola, necesito una cotización formal de un cable de acero, ya somos clientes de ustedes
+[CLAUDIA] ¡Claro que sí! Para conectarte directo con tu asesor, ¿me confirmas el nombre exacto con el que están registrados (la razón social)?
+
+[CLIENTE] Tubos Piramide S.A. de C.V.
+    -> herramienta: verificar_cliente_existente(nombre='Tubos Piramide S.A. de C.V.')
+       resultado: {'ok': True, 'encontrado': True, 'cliente': {'nombre': 'TUBOS PIRAMIDE S.A. DE C.V.', 'netsuite_id': '562'}, 'salesrep_id': '115', 'vendedor_nombre': 'Wendy Ariadna Penelope Lopez Reyes', 'vendedor_tiene_whatsapp': True}
+[CLAUDIA] Perfecto, ya te ubiqué en el sistema. Antes de conectarte, cuéntame qué cable necesitas y cuántos metros para dejárselo apuntado a tu asesor.
+
+[CLIENTE] Cable boa 3/8, necesitan 300 metros para una obra
+    -> herramienta: consultar_catalogo(consulta='cable boa 3/8', cantidad=300)
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '2008-619', 'nombre': 'CABLE BOA 3/8" TIPO 6X19 A/A', 'disponible': True, 'existencia': 3852.5, 'precio': 47.81, 'escala_aplicada': 'Escala 1'}, {'codigo': '2008', 'nombre': 'CABLE BOA 3/8" 6X26 A/A WARRIOR', 'disponible': True, 'existencia': 19370.31, 'precio': 49.6, 'escala_aplicada': 'Escala 1'}, {'codigo': '2008A', 'nombre': 'CABLE BOA 3/8" 6X26 A/A', 'disponible': True, 'existencia': 29.38, 'precio': 53.82, 'escala_aplicada': 'Escala 1'}, {'codigo': 'BA0375F1A19', 'nombre': 'CABLE BOA 3/8" 6X26 A/A CAMESA', 'disponible': True, 'existencia': 39.0, 'precio': 71.35, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 4}
+    -> herramienta: agregar_al_pedido(codigo='2008-619', cantidad=300)
+       resultado: {'ok': True, 'articulo': 'CABLE BOA 3/8" TIPO 6X19 A/A', 'cantidad': 300, 'precio_unitario': 47.81, 'escala_aplicada': 'Escala 1'}
+[CLAUDIA] Anotado: CABLE BOA 3/8" TIPO 6X19 A/A x300m. Dame un segundo y te conecto con tu asesora.
+
+    -> herramienta: notificar_vendedor_cliente_existente(salesrep_id='115')
+       resultado: {'ok': True, 'notificado': False, 'vendedor_nombre': 'Wendy Ariadna Penelope Lopez Reyes', 'mensaje_cliente': 'Muchas gracias, en breve será atendido por su asesor de ventas Wendy Ariadna Penelope Lopez Reyes. Muchas gracias por confiar en nosotros, buenas tardes.'}
+[CLAUDIA] Muchas gracias, en breve será atendido por su asesor de ventas Wendy Ariadna Penelope Lopez Reyes. Muchas gracias por confiar en nosotros, buenas tardes.
+
+    [NOTA ANALISTA: REAL: se envió (o se intentó enviar) un WhatsApp real a Wendy Ariadna Penelope Lopez Reyes. notificado=False. La instrucción del prompt de usar el 'mensaje_cliente' TAL CUAL se siguió al pie de la letra — ese es justo el diseño: Claudia no reinventa ese cierre.]

@@ -1,0 +1,28 @@
+ESCENARIO SIM-10 — Pedido con varios artículos, cierre simple
+Teléfono simulado: SIM-10-MULTIPLE
+======================================================================
+
+[CLIENTE] Necesito 10 grilletes de 1/2, 2 eslingas de 3 toneladas y una cadena grado 80 de 3/8 de 50 metros
+    -> herramienta: consultar_catalogo(consulta='grillete 1/2')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': 'SH209-006', 'nombre': 'GRILLETE REFORZADO 1/2" .', 'disponible': True, 'existencia': 535.0, 'precio': 40.65, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018455', 'nombre': 'GRILLETE CROSBY G-209 1/2"', 'disponible': True, 'existencia': 146.0, 'precio': 280.51, 'escala_aplicada': 'Escala 1'}, {'codigo': '1018614', 'nombre': 'GRILLETE CROSBY G-209 1 1/2"', 'disponible': True, 'existencia': 12.0, 'precio': 4403.1, 'escala_aplicada': 'Escala 1'}, {'codigo': '8-837-13', 'nombre': 'GRILLETE YOKE MOD. DA-837 1/2"', 'disponible': True, 'existencia': 2.0, 'precio': 277.2, 'escala_aplicada': 'Escala 1'}, {'codigo': 'SH209-006A', 'nombre': 'GRILLETE REFORZADO 1/2"', 'disponible': False, 'existencia': 0.0, 'precio': 95.87, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 5}
+    -> herramienta: consultar_catalogo(consulta='eslinga 3 toneladas')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': 'EE293MM08-0', 'nombre': 'ESLINGA PLANA 4 TONELADAS X 8 MTS', 'disponible': True, 'existencia': 35.0, 'precio': 988.25, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 1}
+    -> herramienta: consultar_catalogo(consulta='cadena grado 80 3/8', cantidad=50)
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '5050423', 'nombre': 'CADENA A.R. GRADO 80 3/8"', 'disponible': True, 'existencia': 3380.58, 'precio': 248.93, 'escala_aplicada': 'Escala 1'}, {'codigo': '5050423A', 'nombre': 'CADENA GRADO 80 3/8"', 'disponible': False, 'existencia': 0.0, 'precio': 348.96, 'escala_aplicada': 'Escala 1'}, {'codigo': 'KIT PULPO DE CADENA 3/8" GRADO 80', 'nombre': 'KIT PULPO DE CADENA 3/8" GRADO 80', 'disponible': False, 'existencia': 0.0, 'precio': None, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 3}
+    -> herramienta: agregar_al_pedido(codigo='SH209-006', cantidad=10)
+       resultado: {'ok': True, 'articulo': 'GRILLETE REFORZADO 1/2" .', 'cantidad': 10, 'precio_unitario': 40.65, 'escala_aplicada': 'Escala 1'}
+    -> herramienta: agregar_al_pedido(codigo='EE293MM08-0', cantidad=2)
+       resultado: {'ok': True, 'articulo': 'ESLINGA PLANA 4 TONELADAS X 8 MTS', 'cantidad': 2, 'precio_unitario': 988.25, 'escala_aplicada': 'Escala 1'}
+    -> herramienta: agregar_al_pedido(codigo='5050423', cantidad=50)
+       resultado: {'ok': True, 'articulo': 'CADENA A.R. GRADO 80 3/8"', 'cantidad': 50, 'precio_unitario': 248.93, 'escala_aplicada': 'Escala 1'}
+[CLAUDIA] Va tu pedido:
+- GRILLETE REFORZADO 1/2" . x10 — $406.50
+- ESLINGA PLANA 4 TONELADAS X 8 MTS x2 — $1,976.50
+- CADENA A.R. GRADO 80 3/8" x50 — $12,446.50
+Total: $14,829.50
+¿Lo confirmo así?
+
+[CLIENTE] Sí va, confírmalo
+    -> herramienta: confirmar_pedido()
+       resultado: {'ok': True, 'articulos': 3, 'total': 14829.5}
+[CLAUDIA] Quedó confirmado tu pedido por $14,829.50, 3 artículos. En breve te contacta el equipo para coordinar entrega o recolección. ¡Gracias!

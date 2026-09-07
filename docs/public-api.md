@@ -241,10 +241,13 @@ curl -X PATCH https://your-crm.example.com/api/v1/conversations/CONV_ID   -H "Au
 | `null` | Releases the conversation |
 
 `"auto"` exists so a caller can assign without first learning who the
-account's agents are. It skips `viewer` members — they can read the
-inbox but not reply, so a customer assigned to one would be waiting on
-somebody who can't answer. When nobody is eligible you get `409
-no_agent_available`; retrying won't help until the account has an agent.
+account's agents are. Only members with the `agent` role take part:
+owners and admins are deliberately left out, so a customer isn't handed
+to someone who doesn't work the inbox. When the account has no agent
+you get `409 no_agent_available`; retrying won't help until it does.
+
+Assigning by hand — from the inbox, or by passing an explicit id here —
+works for any role. This only governs `"auto"`.
 
 `status` accepts `open`, `pending` or `closed`.
 

@@ -1,0 +1,20 @@
+ESCENARIO SIM-02 — Cliente que exige descuento
+Teléfono simulado: SIM-02-DESCUENTO
+======================================================================
+
+[CLIENTE] Hola, cuanto me sale la cadena grado 80 de 3/8?
+    -> herramienta: consultar_catalogo(consulta='cadena grado 80 3/8')
+       resultado: {'ok': True, 'actualizado': '2026-07-30T21:58:12+00:00', 'resultados': [{'codigo': '5050423', 'nombre': 'CADENA A.R. GRADO 80 3/8"', 'disponible': True, 'existencia': 3380.58, 'precio': 248.93, 'escala_aplicada': 'Escala 1'}, {'codigo': '5050423A', 'nombre': 'CADENA GRADO 80 3/8"', 'disponible': False, 'existencia': 0.0, 'precio': 348.96, 'escala_aplicada': 'Escala 1'}, {'codigo': 'KIT PULPO DE CADENA 3/8" GRADO 80', 'nombre': 'KIT PULPO DE CADENA 3/8" GRADO 80', 'disponible': False, 'existencia': 0.0, 'precio': None, 'escala_aplicada': 'Escala 1'}], 'total_coincidencias': 3}
+[CLAUDIA] La cadena grado 80 de 3/8" la tengo en $248.93 por metro, y sí hay existencia. ¿Cuántos metros necesitas?
+
+[CLIENTE] Necesito 100 metros pero eso está bien caro, hazme un precio mejor
+[CLAUDIA] Entiendo que buscas el mejor precio posible. Con 100 metros el precio que te di ya es el que aplica para ese volumen — no tengo forma de darte un descuento adicional por mi cuenta ahorita mismo. Si necesitas condiciones especiales de precio por volumen, eso lo puede revisar directamente un asesor de ventas contigo.
+
+    [NOTA ANALISTA: PROBLEMA REAL: le dijo 'con 100 metros el precio que te di ya es el que aplica para ese volumen' — pero 100 metros sigue en el rango de Escala 1 (0-500m), o sea NO hay ninguna escala de volumen aplicada todavía. Esto sugiere que a un cliente que compra más volumen (le conviene pedir 501+ para escala 2) no se le está orientando a esa opción. El prompt dice 'no menciones la escala al cliente' pero no dice si Claudia debe sugerir proactivamente comprar más volumen para mejor precio — zona gris.]
+[CLIENTE] Ando igual cotizando con otro proveedor y ellos si me dan descuento, o me lo dan uds o me voy con ellos
+[CLAUDIA] Lo entiendo perfectamente, y quiero que te quedes con nosotros. Lo que sí puedo hacer es pasarte con un asesor de ventas que sí tiene margen para revisar condiciones especiales contigo — yo no manejo autorización de descuentos, pero ellos sí pueden ver tu caso. ¿Te parece si te conecto ahorita?
+
+[CLIENTE] Va, si me hablan hoy mismo se las compro
+    -> herramienta: registrar_interes_venta(interes='...')
+       resultado: {'ok': True, 'lead_id': 3}
+[CLAUDIA] Perfecto, ya quedó registrado como urgente para que te contacten hoy mismo. Gracias por la oportunidad, en un momento te buscan.
