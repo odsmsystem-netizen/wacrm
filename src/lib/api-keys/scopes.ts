@@ -23,6 +23,8 @@ export const API_SCOPES = [
   'deals:write',
   'broadcasts:send',
   'webhooks:manage',
+  'claudia:read',
+  'claudia:write',
 ] as const;
 
 export type ApiScope = (typeof API_SCOPES)[number];
@@ -38,6 +40,8 @@ export const SCOPE_DESCRIPTIONS: Record<ApiScope, string> = {
   'deals:write': 'Create deals on the pipeline',
   'broadcasts:send': 'Launch broadcast campaigns',
   'webhooks:manage': 'Register and manage outbound event webhooks',
+  'claudia:read': "Read Claudia's configuration, knowledge base and behaviours",
+  'claudia:write': 'Report token usage back from Claudia',
 };
 
 /** Type-narrow an unknown value into a valid `ApiScope`. */

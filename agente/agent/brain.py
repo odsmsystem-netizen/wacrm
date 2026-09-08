@@ -19,6 +19,7 @@ from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 
 from agent import tools as biz_tools
+from agent import config_remota
 
 load_dotenv()
 logger = logging.getLogger("agentkit")
@@ -62,7 +63,22 @@ def cargar_system_prompt_base() -> str:
     cliente. Se mantiene separada de la fecha a propósito — es lo que
     permite cachearla (ver `_system_para_api`)."""
     config = cargar_config_prompts()
-    return config.get("system_prompt", "Eres un asistente útil. Responde en español.")
+    base = config.get("system_prompt", "Eres un asistente útil. Responde en español.")
+
+    # Bloque armado por el módulo "Configuración de Claudia IA" del CRM
+    # (base de conocimiento, personalidad, comportamientos adicionales).
+    # Se pega TAL CUAL al final, sin encabezado propio — config_remota.py
+    # ya lo entrega listo para insertar, y Claudia no lo reinterpreta.
+    #
+    # Si no hay CRM configurado, o el CRM nunca respondió, `extra` es "" y
+    # el prompt queda IDÉNTICO al de antes de que existiera este módulo:
+    # ni un salto de línea de más. Esto importa doble, porque este texto
+    # es justo el que se cachea (ver `_system_para_api`) — cambiarlo sin
+    # que la configuración de verdad haya cambiado tira el caché.
+    extra = config_remota.obtener_prompt_extra()
+    if not extra:
+        return base
+    return f"{base.rstrip()}\n\n{extra.strip()}"
 
 
 def cargar_system_prompt() -> str:
@@ -371,6 +387,15 @@ async def generar_respuesta(mensaje: str, historial: list[dict], telefono: str =
                 tools=TOOLS_SCHEMA,
                 messages=mensajes,
             )
+
+            # Se reporta CADA llamada a Anthropic, no solo la última: una
+            # cotización encadena varias idas y vueltas de tool-use (hasta
+            # MAX_TURNOS_HERRAMIENTA) y cada una es un cargo real. Se lanza
+            # en segundo plano — no se espera— para que un CRM lento o
+            # caído no le sume latencia a la respuesta del cliente; el
+            # propio reportar_uso nunca lanza, así que un fallo ahí no
+            # puede romper nada de lo que sigue.
+            config_remota.reportar_uso_en_fondo(MODEL, response.usage)
 
             if response.stop_reason != "tool_use":
                 textos = [b.text for b in response.content if b.type == "text"]

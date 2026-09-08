@@ -22,6 +22,7 @@ from agent.conversacion import atender_mensaje
 from agent.health_tunel import vigilar_tunel
 from agent.programador import programar_sync_diario
 from agent.sondeo_wacrm import sondear_wacrm
+from agent.config_remota import refrescar_config_wacrm
 
 load_dotenv()
 
@@ -72,10 +73,17 @@ async def lifespan(app: FastAPI):
     #                              Task Scheduler de Windows en Railway)
     #   SONDEO_WACRM_ENABLED     — trae los mensajes nuevos del CRM (solo
     #                              corre si WHATSAPP_PROVIDER=wacrm)
+    # La sincronización de configuración de Claudia (base de conocimiento,
+    # personalidad, comportamientos) no tiene interruptor propio: se apaga
+    # sola si no hay WACRM_URL/WACRM_API_KEY configurados — ver
+    # agent/config_remota.py:activo(). A diferencia del sondeo de mensajes,
+    # no depende de WHATSAPP_PROVIDER: el admin puede configurar a Claudia
+    # desde el CRM aunque los mensajes salgan por Twilio.
     tareas_fondo = [
         asyncio.create_task(vigilar_tunel()),
         asyncio.create_task(programar_sync_diario()),
         asyncio.create_task(sondear_wacrm()),
+        asyncio.create_task(refrescar_config_wacrm()),
     ]
 
     yield
