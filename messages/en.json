@@ -1892,6 +1892,14 @@
       "deleteRechargeConfirm": "Delete this recharge? The estimated balance will be recalculated.",
       "deleteRechargeSuccess": "Recharge deleted.",
       "deleteRechargeFailed": "Failed to delete the recharge"
+    },
+    "toggle": {
+      "active": "Claudia is active. Click to turn her off.",
+      "inactive": "Claudia is off. Click to turn her on.",
+      "activeReadOnly": "Claudia is active. Only an admin or owner can change this.",
+      "inactiveReadOnly": "Claudia is off. Only an admin or owner can change this.",
+      "loading": "Loading Claudia's status…",
+      "toggleFailed": "Failed to change Claudia's status"
     }
   }
 }

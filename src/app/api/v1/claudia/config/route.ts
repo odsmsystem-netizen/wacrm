@@ -36,23 +36,31 @@ export async function GET(request: Request) {
 
     const { data: cfg, error: cfgErr } = await supabase
       .from('claudia_config')
-      .select('personalidad, instrucciones_extra, revision')
+      .select('personalidad, instrucciones_extra, revision, activa')
       .eq('account_id', accountId)
       .maybeSingle();
     if (cfgErr) {
       console.error('[v1/claudia/config] error leyendo config:', cfgErr);
-      return ok({ revision: 0, sin_cambios: true });
+      // `activa: true` también en el error: si el CRM no puede leer su
+      // propia configuración, la conducta segura es que Claudia siga
+      // atendiendo clientes, no que enmudezca por un fallo de base de datos.
+      return ok({ revision: 0, sin_cambios: true, activa: true });
     }
 
     // Sin fila de configuración no hay nada que aplicar. Se responde
     // revisión 0 y sin cambios para que Claudia se quede con su prompt
     // de siempre en vez de recibir un bloque vacío que la haría
     // reemplazar —y por tanto invalidar— el texto ya cacheado.
-    if (!cfg) return ok({ revision: 0, sin_cambios: true });
+    if (!cfg) return ok({ revision: 0, sin_cambios: true, activa: true });
 
     const revision = Number(cfg.revision ?? 0);
+    // `activa` va fuera del mecanismo de revisión y viaja en TODAS las
+    // respuestas. Es un interruptor: tiene que surtir efecto en la
+    // siguiente vuelta del sondeo pase lo que pase, y como no forma
+    // parte del prompt, mandarlo siempre no toca el caché de Anthropic.
+    const activa = cfg.activa !== false;
     if (since > 0 && since === revision) {
-      return ok({ revision, sin_cambios: true });
+      return ok({ revision, sin_cambios: true, activa });
     }
 
     // Solo lo que está encendido, y del conocimiento solo lo que llegó a
@@ -80,7 +88,7 @@ export async function GET(request: Request) {
       // Se responde `sin_cambios` en vez de un bloque parcial. Servir la
       // personalidad sin la base de conocimiento dejaría a Claudia
       // contestando con seguridad sobre cosas que ya no sabe.
-      return ok({ revision: since, sin_cambios: true });
+      return ok({ revision: since, sin_cambios: true, activa });
     }
 
     const prompt_extra = construirBloquePrompt({
@@ -93,6 +101,7 @@ export async function GET(request: Request) {
     return ok({
       revision,
       sin_cambios: false,
+      activa,
       personalidad: Number(cfg.personalidad ?? 3),
       prompt_extra,
       fuentes: conocimiento.data?.length ?? 0,

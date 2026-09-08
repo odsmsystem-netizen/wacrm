@@ -1892,6 +1892,14 @@
       "deleteRechargeConfirm": "이 충전 기록을 삭제할까요? 예상 잔액이 다시 계산됩니다.",
       "deleteRechargeSuccess": "충전 기록을 삭제했습니다.",
       "deleteRechargeFailed": "충전 기록을 삭제하지 못했습니다"
+    },
+    "toggle": {
+      "active": "Claudia가 활성화되어 있습니다. 클릭하면 끕니다.",
+      "inactive": "Claudia가 꺼져 있습니다. 클릭하면 켭니다.",
+      "activeReadOnly": "Claudia가 활성화되어 있습니다. 관리자나 소유자만 이 설정을 변경할 수 있습니다.",
+      "inactiveReadOnly": "Claudia가 꺼져 있습니다. 관리자나 소유자만 이 설정을 변경할 수 있습니다.",
+      "loading": "Claudia 상태를 불러오는 중…",
+      "toggleFailed": "Claudia 상태를 변경하지 못했습니다"
     }
   }
 }

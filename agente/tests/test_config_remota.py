@@ -23,6 +23,7 @@ def _reset_estado():
     nivel de módulo y las pruebas correrían en el mismo proceso."""
     config_remota._ESTADO["revision"] = 0
     config_remota._ESTADO["prompt_extra"] = ""
+    config_remota._ESTADO["activa"] = True
     config_remota._permiso_denegado = False
 
 
@@ -158,6 +159,111 @@ async def test_config_nueva_si_reemplaza_el_bloque(monkeypatch):
 
     assert config_remota.obtener_prompt_extra() == "bloque nuevo"
     assert config_remota._ESTADO["revision"] == 2
+
+
+# ══════════════════════════════════════════════════════════════════
+# 2b. El interruptor general `activa` (verde/rojo en la barra del CRM)
+# ══════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+async def test_activa_se_actualiza_en_sin_cambios_sin_tocar_prompt_extra(monkeypatch):
+    """`activa` viaja en TODAS las respuestas, incluidas sin_cambios: true,
+    y tiene que actualizarse ahí mismo — sin que eso toque prompt_extra,
+    la rama que protege el caché del prompt (ver
+    test_sin_cambios_no_toca_el_prompt)."""
+    _reset_estado()
+    config_remota._aplicar({"revision": 7, "prompt_extra": "## Personalidad\nCercana."})
+    config_remota._ESTADO["activa"] = True
+
+    cliente = ClienteFalso(respuesta=RespuestaFalsa(
+        200, {"revision": 7, "sin_cambios": True, "activa": False}
+    ))
+    seguir = await config_remota._actualizar(cliente, "https://crm.test", "clave")
+
+    assert seguir is True
+    assert config_remota.claudia_activa() is False, (
+        "activa debe surtir efecto en la siguiente vuelta aunque sin_cambios sea True"
+    )
+    assert config_remota.obtener_prompt_extra() == "## Personalidad\nCercana.", (
+        "sin_cambios no debe tocar ni un carácter del prompt cacheado"
+    )
+
+
+@pytest.mark.asyncio
+async def test_activa_se_actualiza_tambien_con_config_completa(monkeypatch):
+    """La otra mitad: con sin_cambios False (config completa), `activa`
+    también debe reflejar lo que mandó el CRM."""
+    _reset_estado()
+    cliente = ClienteFalso(respuesta=RespuestaFalsa(200, {
+        "revision": 8, "sin_cambios": False, "activa": False,
+        "personalidad": 3, "prompt_extra": "x", "fuentes": 2, "comportamientos": 1,
+    }))
+    await config_remota._actualizar(cliente, "https://crm.test", "clave")
+    assert config_remota.claudia_activa() is False
+
+
+def test_claudia_activa_por_omision_es_true():
+    """Antes de la primera vuelta buena, Claudia sigue atendiendo: si el
+    valor por omisión fuera False, un negocio recién configurado quedaría
+    mudo hasta la primera respuesta del CRM sin que nadie lo pidiera."""
+    _reset_estado()
+    assert config_remota.claudia_activa() is True
+
+
+@pytest.mark.asyncio
+async def test_sin_crm_configurado_claudia_activa_es_true(monkeypatch):
+    """Un negocio que sigue mandando mensajes por Twilio, sin CRM
+    configurado, nunca debe quedarse callado por este interruptor: no hay
+    quien lo mueva."""
+    monkeypatch.delenv("WACRM_URL", raising=False)
+    monkeypatch.delenv("WACRM_API_KEY", raising=False)
+    _reset_estado()
+    assert config_remota.activo() is False
+    assert config_remota.claudia_activa() is True
+
+
+@pytest.mark.asyncio
+async def test_activa_ausente_en_la_respuesta_conserva_el_ultimo_valor(monkeypatch):
+    """Un CRM que todavía no manda `activa` (o una respuesta con el campo
+    ausente) no puede apagar a Claudia por accidente: se conserva el
+    último valor bueno conocido, igual que con prompt_extra."""
+    _reset_estado()
+    config_remota._ESTADO["activa"] = False  # última buena conocida: apagada
+
+    cliente = ClienteFalso(respuesta=RespuestaFalsa(200, {"revision": 1, "sin_cambios": True}))
+    await config_remota._actualizar(cliente, "https://crm.test", "clave")
+
+    assert config_remota.claudia_activa() is False, "el campo ausente no debe tocar el último valor"
+
+
+@pytest.mark.asyncio
+async def test_activa_con_tipo_invalido_se_ignora(monkeypatch):
+    """Una respuesta con `activa` que no es booleano (basura, texto,
+    número) no debe apagar ni encender a Claudia — se conserva lo último
+    bueno, mismo criterio que una forma inesperada del resto de la config."""
+    _reset_estado()
+    config_remota._ESTADO["activa"] = True
+
+    cliente = ClienteFalso(respuesta=RespuestaFalsa(
+        200, {"revision": 1, "sin_cambios": True, "activa": "si"}
+    ))
+    await config_remota._actualizar(cliente, "https://crm.test", "clave")
+
+    assert config_remota.claudia_activa() is True
+
+
+@pytest.mark.asyncio
+async def test_activa_sigue_true_tras_un_fallo_de_red(monkeypatch):
+    """Si nunca se pudo contactar al CRM, un fallo de red no debe apagar
+    a Claudia: sigue con el valor por omisión (True) — enmudecer por un
+    problema de red sería peor que seguir contestando."""
+    _reset_estado()
+
+    cliente = ClienteFalso(excepcion=TimeoutError("el CRM no contestó"))
+    seguir = await config_remota._actualizar(cliente, "https://crm.test", "clave")
+
+    assert seguir is True
+    assert config_remota.claudia_activa() is True
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -6,8 +6,9 @@ import {
 } from '@/lib/auth/account';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
-/** Lo que ve una cuenta que nunca configuró nada. */
-const POR_OMISION = { personalidad: 3, instrucciones_extra: '', revision: 0 };
+// Una cuenta sin configurar sale ENCENDIDA: el interruptor da control,
+// no cambia el comportamiento de nadie por existir.
+const POR_OMISION = { personalidad: 3, instrucciones_extra: '', revision: 0, activa: true };
 
 /**
  * GET /api/claudia/config — personalidad e indicaciones extra (cualquier miembro).
@@ -21,7 +22,7 @@ export async function GET() {
     const { supabase, accountId } = await getCurrentAccount();
     const { data, error } = await supabase
       .from('claudia_config')
-      .select('personalidad, instrucciones_extra, revision')
+      .select('personalidad, instrucciones_extra, revision, activa')
       .eq('account_id', accountId)
       .maybeSingle();
     if (error) {
@@ -77,6 +78,8 @@ export async function PATCH(request: Request) {
       cambios.instrucciones_extra = body.instrucciones_extra.slice(0, 10_000);
     }
 
+    if (typeof body.activa === 'boolean') cambios.activa = body.activa;
+
     if (Object.keys(cambios).length === 0) {
       return NextResponse.json({ error: 'No hay nada que cambiar' }, { status: 400 });
     }
@@ -86,7 +89,7 @@ export async function PATCH(request: Request) {
     const { data, error } = await supabase
       .from('claudia_config')
       .upsert({ account_id: accountId, ...cambios }, { onConflict: 'account_id' })
-      .select('personalidad, instrucciones_extra, revision')
+      .select('personalidad, instrucciones_extra, revision, activa')
       .single();
     if (error) {
       console.error('[claudia/config PATCH] error:', error);

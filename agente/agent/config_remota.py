@@ -33,9 +33,16 @@ _TIMEOUT = 20.0
 # vuelta exitosa (o si nunca hay CRM configurado), `obtener_prompt_extra()`
 # devuelve "" y todo se comporta exactamente como antes de que existiera
 # este módulo — ver el requisito en brain.py:cargar_system_prompt_base.
+#
+# `activa` arranca en True a propósito: es el interruptor general de
+# Claudia desde la barra del CRM, y hasta que se sepa lo contrario (o si
+# nunca hay CRM configurado) Claudia debe seguir atendiendo. Enmudecer
+# por un fallo de red o por no tener CRM sería mucho peor que seguir
+# contestando — son clientes reales esperando. Ver `claudia_activa()`.
 _ESTADO: dict = {
     "revision": 0,
     "prompt_extra": "",
+    "activa": True,
 }
 
 # Una vez que el CRM contesta 403 (falta el scope claudia:read), no tiene
@@ -81,6 +88,18 @@ def obtener_prompt_extra() -> str:
     return _ESTADO["prompt_extra"]
 
 
+def claudia_activa() -> bool:
+    """True si Claudia debe responder — el interruptor general que el
+    admin mueve en la barra superior del CRM (verde/rojo).
+
+    Por omisión True, y con toda intención: si nunca hubo CRM
+    configurado, si el CRM nunca contestó, si el campo `activa` viene
+    ausente, o si la respuesta trae basura, Claudia sigue atendiendo.
+    Ver la nota de `_ESTADO` y `_actualizar_activa`.
+    """
+    return _ESTADO["activa"]
+
+
 def _aplicar(datos: dict) -> None:
     """Reemplaza la configuración en memoria por la que acaba de llegar.
 
@@ -98,6 +117,27 @@ def _aplicar(datos: dict) -> None:
         _ESTADO["revision"], datos.get("personalidad"),
         datos.get("fuentes"), datos.get("comportamientos"),
     )
+
+
+def _actualizar_activa(datos: dict) -> None:
+    """Actualiza `_ESTADO["activa"]` a partir de la respuesta del CRM.
+
+    A propósito se llama en CADA vuelta que trae una respuesta válida,
+    INCLUIDA la rama `sin_cambios: true` (ver `_actualizar` más abajo).
+    `activa` no forma parte del prompt — no entra al bloque cacheado que
+    protege `_aplicar` — así que no hay ningún motivo para dejarlo fuera
+    del refresco solo porque la revisión del prompt no cambió: el
+    interruptor tiene que surtir efecto en la siguiente vuelta pase lo
+    que pase con el caché.
+
+    Si el campo viene ausente o con un tipo que no es bool (una API
+    vieja del CRM, una respuesta corrupta), se conserva el último valor
+    bueno conocido — mismo criterio que ya usa el módulo con
+    `prompt_extra` — y por omisión ese valor es True.
+    """
+    valor = datos.get("activa")
+    if isinstance(valor, bool):
+        _ESTADO["activa"] = valor
 
 
 async def _actualizar(client: httpx.AsyncClient, url: str, api_key: str) -> bool:
@@ -160,9 +200,16 @@ async def _actualizar(client: httpx.AsyncClient, url: str, api_key: str) -> bool
         logger.warning("El CRM devolvió una configuración de Claudia con forma inesperada")
         return True
 
+    # `activa` se actualiza SIEMPRE que la respuesta trae datos válidos,
+    # también aquí en la rama sin_cambios — ver el docstring de
+    # `_actualizar_activa`. `prompt_extra` es la excepción, no la regla:
+    # solo ese campo necesita protegerse del refresco por el caché.
+    _actualizar_activa(datos)
+
     if datos.get("sin_cambios"):
-        # Nada que hacer: ni se toca _ESTADO. Esta rama es la que protege
-        # el caché del prompt (ver el docstring de arriba).
+        # El prompt no se toca: es la rama que protege el caché de
+        # Anthropic (ver el docstring de `_aplicar`). `activa` ya se
+        # actualizó arriba, fuera de este `if` a propósito.
         return True
 
     _aplicar(datos)

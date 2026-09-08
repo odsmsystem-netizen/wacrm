@@ -1880,6 +1880,14 @@
       "deleteRechargeConfirm": "¿Borrar esta recarga? El saldo estimado se recalculará.",
       "deleteRechargeSuccess": "Recarga borrada.",
       "deleteRechargeFailed": "No se pudo borrar la recarga"
+    },
+    "toggle": {
+      "active": "Claudia está activa. Haz clic para apagarla.",
+      "inactive": "Claudia está apagada. Haz clic para activarla.",
+      "activeReadOnly": "Claudia está activa. Solo un administrador o dueño puede cambiar esto.",
+      "inactiveReadOnly": "Claudia está apagada. Solo un administrador o dueño puede cambiar esto.",
+      "loading": "Cargando el estado de Claudia…",
+      "toggleFailed": "No se pudo cambiar el estado de Claudia"
     }
   }
 }

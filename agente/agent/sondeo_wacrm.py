@@ -23,13 +23,20 @@ import logging
 import os
 import httpx
 
-from agent import wacrm_crm
+from agent import config_remota, wacrm_crm
 from agent.conversacion import atender_mensaje
 from agent.memory import guardar_mensaje
 
 logger = logging.getLogger("agentkit")
 
 _TIMEOUT = 20.0
+
+# Recuerda el último valor de `activa` que se logueó, para avisar SOLO
+# cuando cambia. Con el sondeo cada 5 s, un log por vuelta serían miles
+# de líneas por hora sin decir nada nuevo — lo que importa es el cambio
+# de estado, no cada iteración. Arranca en True porque ese es el valor
+# por omisión de config_remota.claudia_activa() (ver ese módulo).
+_activa_avisada = True
 
 # Cuántos mensajes recientes se piden de una conversación con actividad.
 # Es un tope de seguridad, no un objetivo: normalmente hay uno o dos nuevos.
@@ -134,7 +141,31 @@ def _entrantes_desde(mensajes: list[dict], ultimo_id: str | None) -> tuple[list[
     return nuevos, id_mas_reciente
 
 
+def _avisar_cambio_activa(activa: bool) -> None:
+    """Loguea SOLO cuando el interruptor general de Claudia cambió de
+    estado desde el último aviso — nunca en cada vuelta del sondeo (ver
+    el comentario de `_activa_avisada` más arriba)."""
+    global _activa_avisada
+    if activa == _activa_avisada:
+        return
+    if activa:
+        logger.info("Claudia IA fue reactivada desde el CRM: retoma las respuestas.")
+    else:
+        logger.warning(
+            "Claudia IA está apagada desde el CRM: el sondeo sigue corriendo y "
+            "avanzando el marcador de mensajes vistos, pero no se genera ni "
+            "envía respuesta hasta que se vuelva a encender."
+        )
+    _activa_avisada = activa
+
+
 async def _revisar(client, url, api_key, estado: dict, fallos: dict, primera_vuelta: bool) -> None:
+    # Se lee una sola vez por vuelta (no por conversación): es un
+    # interruptor global, no algo por hilo, y así el aviso de cambio de
+    # estado también sale una sola vez por vuelta.
+    activa = config_remota.claudia_activa()
+    _avisar_cambio_activa(activa)
+
     # `sort=activity` y un limite explicito, y las dos cosas importan.
     #
     # Sin el orden por actividad, el CRM devuelve las conversaciones mas
@@ -219,6 +250,18 @@ async def _revisar(client, url, api_key, estado: dict, fallos: dict, primera_vue
             continue
 
         if not textos:
+            marcar_visto()
+            continue
+
+        # LA DECISIÓN CLAVE del interruptor general: apagada, el marcador
+        # de mensajes vistos SIGUE avanzando (marcar_visto se llama igual
+        # que si hubiera respondido) — lo único que se salta es generar y
+        # enviar la respuesta. Si el marcador se congelara aquí, al volver
+        # a encenderla Claudia respondería de golpe a TODO lo acumulado,
+        # incluidas las conversaciones que un vendedor ya atendió a mano
+        # mientras estaba apagada. "Apagada" significa que un humano se
+        # hizo cargo del hilo, no que Claudia tenga una cola pendiente.
+        if not activa:
             marcar_visto()
             continue
 

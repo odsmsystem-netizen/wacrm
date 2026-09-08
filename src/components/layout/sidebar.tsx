@@ -9,7 +9,6 @@ import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
-  Bot,
   Crown,
   GitBranch,
   LayoutDashboard,
@@ -99,7 +98,10 @@ const navItems: NavItem[] = [
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
   { href: "/automations", labelKey: "automations", icon: Zap },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
-  { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  // "/agents" configura el motor de IA interno de wacrm. En las cuentas
+  // que usan Claudia ese motor está apagado, así que mostrarlo en el
+  // menú invitaría a configurar algo que nadie ejecuta. La ruta sigue
+  // viva (no se borró la página) por si alguien la tiene guardada.
   { href: "/claudia", labelKey: "claudia", icon: Sparkles },
 ];
 
