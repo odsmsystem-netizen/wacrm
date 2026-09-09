@@ -71,11 +71,13 @@ export async function POST(_request: Request, { params }: Params) {
 
     const { data, error } = await supabase
       .from('claudia_knowledge')
+      // `actualizado` no va aquí: lo pone Postgres con el trigger de la
+      // migración 045. Escribirlo desde Node mezclaba el reloj de la
+      // aplicación con el de la base, que no van sincronizados.
       .update({
         texto: resultado.texto,
         estado: resultado.error ? 'error' : 'listo',
         error: resultado.error.slice(0, 500),
-        actualizado: new Date().toISOString(),
       })
       .eq('account_id', accountId)
       .eq('id', id)

@@ -31,7 +31,10 @@ export async function PATCH(request: Request, { params }: Params) {
     if (Object.keys(cambios).length === 0) {
       return NextResponse.json({ error: 'No hay nada que cambiar' }, { status: 400 });
     }
-    cambios.actualizado = new Date().toISOString();
+    // `actualizado` lo pone Postgres (trigger de la migración 045). Ponerlo
+    // aquí usaba el reloj de Node mientras `creado` usa el de la base: dos
+    // relojes distintos que no tienen por qué coincidir, y de hecho no
+    // coincidían.
 
     // El filtro por cuenta va explícito además del id: sin él, un uuid de
     // otra cuenta pasaría la validación de formato y tocaría material ajeno.
