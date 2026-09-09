@@ -86,8 +86,8 @@ function LoginPageInner() {
             <img
               src="/ambar-logo.png"
               alt="Ambar Cargo"
-              width={421}
-              height={172}
+              width={431}
+              height={183}
               className="mb-3 h-11 w-auto justify-self-center"
             />
           )}
