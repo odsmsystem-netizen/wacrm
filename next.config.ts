@@ -70,6 +70,62 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   /**
+   * Packages that must NOT be bundled into the server chunks.
+   *
+   * `pdf-parse` reaches pdfjs-dist, which needs `DOMMatrix` — a browser
+   * API that Node does not provide. It gets it from `@napi-rs/canvas`,
+   * a *native* dependency: a per-platform `.node` binary. A binary
+   * cannot go inside a JS bundle, so when Next inlined `pdf-parse` the
+   * canvas dependency was silently dropped and every PDF upload died in
+   * production with `DOMMatrix is not defined` — while working locally,
+   * where `next dev` resolves it from node_modules.
+   *
+   * Marking it external makes the route `require()` it at runtime, and
+   * output tracing then copies the package *and* its native binary into
+   * `.next/standalone/node_modules`. Next auto-excludes the old
+   * `canvas` package but not `@napi-rs/canvas`, so this has to be
+   * declared by hand.
+   */
+  serverExternalPackages: ["pdf-parse"],
+
+  /**
+   * Force the native canvas binary into the standalone trace.
+   *
+   * Marking `pdf-parse` external is necessary but NOT sufficient.
+   * Internally it reaches canvas through a dynamic, computed
+   * `require("@napi-rs/canvas")` wrapped in a try/catch, which static
+   * tracing cannot see — so the package never gets copied and the
+   * try/catch swallows the failure into the same `DOMMatrix is not
+   * defined` further down.
+   *
+   * The glob covers `@napi-rs/*` rather than `@napi-rs/canvas` on
+   * purpose: the `.node` binary lives in a *sibling*, per-platform
+   * package (`canvas-linux-x64-musl` on the Alpine image,
+   * `canvas-win32-x64-msvc` locally). Pointing at `canvas/**` alone
+   * would copy the JS wrapper and leave the binary behind.
+   *
+   * `pdfjs-dist` is here for the same reason and was found the same
+   * way: with canvas fixed, the next failure was `Cannot find module
+   * pdfjs-dist/legacy/build/pdf.worker.mjs`. Tracing had copied
+   * exactly one file — `pdf.mjs` — because the worker, the cmaps and
+   * the wasm decoders are all resolved at runtime from computed
+   * paths. The whole package goes in rather than the worker alone:
+   * enumerating dynamically-loaded assets one at a time costs a full
+   * image rebuild per guess, and a PDF that needs a cmap would fail
+   * in production long after we stopped looking.
+   *
+   * Scoped to `/api/claudia/**`, the only routes that parse documents
+   * (upload and reprocess), so the other routes don't carry ~70 MB of
+   * Skia and pdfjs they never call.
+   */
+  outputFileTracingIncludes: {
+    "/api/claudia/**": [
+      "./node_modules/@napi-rs/**/*",
+      "./node_modules/pdfjs-dist/**/*",
+    ],
+  },
+
+  /**
    * Cross-origin dev access (Next.js 16).
    *
    * Next 16 blocks requests to dev-only resources (`/_next/*` internals,
