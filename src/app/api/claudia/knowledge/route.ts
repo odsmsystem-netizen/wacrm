@@ -17,7 +17,12 @@ import {
 // pesar decenas de miles de caracteres y la pantalla solo enseña el
 // título y el estado. Devolverlo multiplicaría por mil el peso de una
 // petición que se hace cada vez que alguien abre la pestaña.
-const CAMPOS = 'id, tipo, titulo, origen, estado, error, bytes, activo, creado';
+//
+// `caracteres` es la columna generada de la migración 044: da el largo
+// del texto sin traerlo, que es lo que la pantalla necesita para avisar
+// cuánto pesa el prompt de Claudia. REQUIERE esa migración aplicada.
+const CAMPOS =
+  'id, tipo, titulo, origen, estado, error, bytes, caracteres, activo, creado';
 
 /**
  * GET /api/claudia/knowledge — fuentes de la base de conocimiento.
@@ -69,6 +74,7 @@ export async function POST(request: Request) {
     let bytes = 0;
     let buffer: Buffer | undefined;
     let storage_path = '';
+    let apagada = false;
 
     if (contentType.includes('multipart/form-data')) {
       const form = await request.formData();
@@ -95,6 +101,20 @@ export async function POST(request: Request) {
         typeof tituloForm === 'string' && tituloForm.trim()
           ? tituloForm.trim()
           : archivo.name.replace(/\.[^.]+$/, '');
+
+      // La carga en lote da de alta las fuentes APAGADAS. Todo el texto
+      // de las fuentes activas viaja dentro del prompt de Claudia en
+      // cada mensaje, así que meter cuarenta documentos de un tirón sin
+      // que nadie los mire es exactamente lo que la selección múltiple
+      // vuelve fácil; que lleguen apagadas obliga a una decisión.
+      //
+      // Solo el valor exacto 'false' apaga. Un `activo=0` mal formado
+      // desde otro cliente NO debe apagar en silencio una fuente que el
+      // administrador espera encendida, y una subida suelta —que no
+      // manda el campo— sigue comportándose igual que siempre: la fila
+      // llega activa por el DEFAULT de la columna, no porque esta ruta
+      // lo escriba.
+      apagada = form.get('activo') === 'false';
 
       // El original se guarda para que el administrador lo pueda volver a
       // ver. Si la subida falla NO se aborta el alta: lo que Claudia
@@ -135,6 +155,7 @@ export async function POST(request: Request) {
         estado: resultado.error ? 'error' : 'listo',
         error: resultado.error.slice(0, 500),
         bytes,
+        ...(apagada ? { activo: false } : {}),
       })
       .select(CAMPOS)
       .single();
