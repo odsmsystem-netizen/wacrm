@@ -70,3 +70,8 @@ agente/scripts/config.ini
 # Binarios descargados (cloudflared pesa 52 MB y ya no se usa:
 # el agente habla con el CRM por la red interna, sin tunel).
 agente/bin/
+
+# Volcados de paginas de Playwright MCP. Llevan el contenido de los
+# paneles visitados —incluidas las variables de entorno en claro— y no
+# tienen por que existir fuera de la sesion que los genero.
+.playwright-mcp/

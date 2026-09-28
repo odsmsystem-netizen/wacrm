@@ -52,7 +52,7 @@ Si ves ese error, faltan *Build Time Arguments*, no variables de entorno.
 - **Provider:** GitHub
 - **Repositorio:** `odsmsystem-netizen/wacrm`
 - **Rama:** `main`
-- **Docker Context Path:** `/` (la raíz; el `Dockerfile` copia desde ahí)
+- **Docker Context Path:** `.` (el contexto por omisión; el `Dockerfile` copia desde la raíz del repositorio)
 
 ### Build
 
@@ -76,32 +76,73 @@ completa.
 Pestaña **Environment**, campo principal (sintaxis dotenv):
 
 ```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+# Sustituye CADA valor por el real antes de guardar.
+# Si pegas este bloque tal cual, el panel acepta los marcadores como si
+# fueran claves: la aplicación construye, arranca y solo falla al iniciar
+# sesión, con una clave que no existe inlineada en el bundle.
+NEXT_PUBLIC_SUPABASE_URL=https://PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_SITE_URL=https://crm.ambar-apps.cloud
 NEXT_PUBLIC_APP_LOCALE=es
 
-SUPABASE_SERVICE_ROLE_KEY=<service role key>
-ENCRYPTION_KEY=<64 caracteres hex>
-META_APP_SECRET=<app secret de Meta>
-AUTOMATION_CRON_SECRET=<cadena larga aleatoria>
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+ENCRYPTION_KEY=64_CARACTERES_HEX
+META_APP_SECRET=APP_SECRET_DE_META
+AUTOMATION_CRON_SECRET=CADENA_LARGA_ALEATORIA
 ```
+
+Comprobación rápida tras guardar: ningún valor debe contener `<`, `>`,
+puntos suspensivos ni espacios. Un marcador copiado por error no da
+ningún aviso — el build pasa el guard, porque el guard comprueba que la
+variable no esté *vacía*, no que sea válida.
 
 **No pongas `PORT`.** La imagen escucha en 3000 y liga `0.0.0.0`;
 sobrescribirlo solo desincroniza el proceso del puerto del dominio y
 produce un 502.
 
-### Build Time Arguments
+### Build-time Arguments
 
-En el campo **Build Time Arguments** de esa misma pestaña, repite **solo**
-los cuatro públicos:
+La pestaña **Environment** tiene tres campos, y conviene saber cuál es
+cuál antes de pegar nada:
+
+| Campo | Cuándo se lee | Qué va aquí |
+| --- | --- | --- |
+| **Environment Settings** | En ejecución | Todo: los cuatro públicos y los tres secretos |
+| **Build-time Arguments** | Durante el build, **queda en las capas** | Solo los cuatro `NEXT_PUBLIC_*` |
+| **Build-time Secrets** | Durante el build, **no deja rastro** | Nada en este proyecto |
+
+*Build-time Secrets* usa el mecanismo de secretos de BuildKit, que monta
+el valor solo mientras corre la instrucción y no lo graba en ninguna
+capa. Es el campo correcto para algo como un `NPM_TOKEN` de un registro
+privado. Este repositorio no lo necesita: el `Dockerfile` no declara
+ningún `--mount=type=secret`, así que **se queda vacío**.
+
+En **Build-time Arguments** repite **solo** los cuatro públicos, con los
+mismos valores reales que pusiste arriba:
 
 ```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+NEXT_PUBLIC_SUPABASE_URL=https://PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_SITE_URL=https://crm.ambar-apps.cloud
 NEXT_PUBLIC_APP_LOCALE=es
 ```
+
+Que estos cuatro viajen en el bundle del cliente no es un descuido: son
+públicos por diseño. La protección de la base no es esconder el `anon
+key`, es Row Level Security. El `service role key`, que sí salta RLS,
+nunca aparece aquí.
+
+Para verificar que el valor llegó de verdad, una vez desplegado:
+
+```bash
+curl -s https://crm.ambar-apps.cloud/login \
+  | grep -oE '/_next/static/[^"]+\.js' | sort -u \
+  | while read c; do curl -s "https://crm.ambar-apps.cloud$c"; done \
+  | grep -o 'PROYECTO\.supabase\.co","[^"]\{0,12\}'
+```
+
+Debe imprimir la URL seguida del principio de una clave (`eyJ...`). Si
+imprime la URL seguida de otra cosa, lo que se guardó no era la clave.
 
 #### Por qué los secretos no se repiten aquí
 
@@ -113,9 +154,23 @@ puede entregar a una instrucción de build un argumento que el
 `Dockerfile` nunca declaró.
 
 `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY` y `META_APP_SECRET` se leen
-en tiempo de ejecución y **no deben aparecer en Build Time Arguments**.
+en tiempo de ejecución y **no deben aparecer en Build-time Arguments**.
 Agregar un `ARG` para cualquiera de ellos anularía la protección sin
 ningún aviso.
+
+### Create Environment File
+
+Ese interruptor, activado por omisión, escribe un `.env` con todas las
+variables junto al `Dockerfile` durante el build. Aquí no hace falta —
+los públicos llegan por build args y los secretos por el entorno del
+contenedor— y conviene **apagarlo** para no dejar un archivo con
+secretos en el contexto de build.
+
+Si se deja encendido tampoco es una fuga: el `.dockerignore` de este
+repositorio excluye `.env*`, así que ese archivo nunca entra al contexto
+y el `COPY . .` del stage `builder` no lo ve. Vale la pena saberlo antes
+de tocar esa línea del `.dockerignore`, porque es lo único que separa
+ambos casos.
 
 ## Aplicación 2 — el agente Claudia
 
@@ -136,7 +191,7 @@ ningún aviso.
 
 - **Repositorio:** `odsmsystem-netizen/whatsapp-agentkit`
 - **Rama:** `main`
-- **Docker Context Path:** `/`
+- **Docker Context Path:** `.`
 - **Dockerfile Path:** `Dockerfile`
 - **Dominio:** `claudia.ambar-apps.cloud`, **Container Port `8000`**, HTTPS activado
 
@@ -180,19 +235,58 @@ público):
 | `knowledge/` | Base de conocimiento | Responde sin contexto de negocio |
 
 El modo de fallo es cruel: el contenedor queda **healthy** y el error solo
-aparece frente a un cliente real. Crea en Dokploy volúmenes persistentes
-(*Advanced → Volumes*) montados en `/app/agentkit.db`,
-`/app/netsuite_sync.db`, `/app/config` y `/app/knowledge`, y **copia los
-archivos al VPS antes del primer arranque**:
+aparece frente a un cliente real.
 
-```bash
-cd ~/whatsapp-agentkit
-scp netsuite_sync.db agentkit.db usuario@vps:/ruta/del/volumen/
-scp -r config knowledge usuario@vps:/ruta/del/volumen/
+#### Un volumen de directorio, no de archivos
+
+En *Advanced → Volumes* crea **un** volumen (`Volume Mount`) llamado
+`claudia-data` montado en **`/app/data`**, y manda las dos bases ahí por
+variable de entorno:
+
+```dotenv
+NETSUITE_DB_PATH=/app/data/netsuite_sync.db
+DATABASE_URL=sqlite+aiosqlite:////app/data/agentkit.db
 ```
 
-Cópialos desde la instalación **viva**, no desde `wacrm/agente`: son los
-que el contenedor actual viene usando.
+Cuatro barras en `DATABASE_URL`: tres son el separador del esquema y la
+cuarta es la raíz. Con tres, SQLAlchemy lee la ruta como relativa y la
+base acaba dentro de la imagen, donde se pierde en cada despliegue.
+
+Montar los archivos uno a uno —`/app/netsuite_sync.db` y compañía— parece
+más directo y es justo lo que no hay que hacer: si el archivo todavía no
+existe en el host, Docker crea un **directorio** con ese nombre, y SQLite
+falla con un error que no menciona el montaje por ningún lado.
+
+#### El catálogo se regenera, no se copia
+
+No hace falta subir los 2.5 MB por `scp` (ni tener acceso SSH). El agente
+sabe reconstruirlo desde NetSuite con las credenciales que ya tiene en su
+entorno. Crea un Schedule —sirve como sincronización diaria de todos
+modos— y ejecútalo una vez a mano tras el primer despliegue:
+
+| Campo | Valor |
+| --- | --- |
+| Cron | `0 7 * * *` |
+| Timezone | `America/Mexico_City` |
+| Shell | `bash` |
+| Command | `python scripts/sync_diario.py` |
+
+Tarda unos diez segundos y deja constancia en su log: `Catálogo
+sincronizado: 3161 artículos`, `Clientes sincronizados: 8985`. El botón de
+ejecución manual es el **segundo** de la fila de iconos de la tarea; el
+primero abre el historial.
+
+`agentkit.db` sí empieza vacío: se pierde la memoria de conversaciones
+anteriores, no el catálogo. `config/` y `knowledge/` vienen del propio
+repositorio, así que no necesitan volumen.
+
+#### Orden de arranque
+
+Despliega con **`SONDEO_WACRM_ENABLED=false`**, sincroniza, comprueba que
+el agente responde, y solo entonces enciende el sondeo y reinicia. Si lo
+levantas con el sondeo activo, Claudia empieza a atender conversaciones
+antes de tener catálogo — y como no falla al arrancar sino al cotizar, el
+primero en notarlo sería un cliente.
 
 ### `health_tunel.py` ya no aplica
 
@@ -256,6 +350,21 @@ lo arregla: hay que reconstruir.
 
 **502 / bad gateway.** El container port no es `3000` (CRM) u `8000`
 (agente), o una variable `PORT` suelta movió el listener.
+
+**El contenedor del agente reinicia en bucle nada más desplegar.** Mira
+sus *Logs*: si dice `ModuleNotFoundError: No module named 'greenlet'`, le
+falta esa librería. `DATABASE_URL` usa `sqlite+aiosqlite`, que entra por
+el motor asíncrono de SQLAlchemy, y SQLAlchemy 2.x dejó de instalar
+greenlet como dependencia obligatoria. Se arregla pidiendo el extra en
+`requirements.txt`:
+
+```
+sqlalchemy[asyncio]>=2.0.0,<3.0.0
+```
+
+El síntoma en el panel confunde: el estado alterna entre `created` y
+`running` con "Up Less than a second" y el ID del contenedor cambia en
+cada vistazo. Eso es Swarm reintentando, no un arranque lento.
 
 **El agente responde pero no cotiza precios.** Falta `netsuite_sync.db` en
 el volumen. El contenedor se ve sano porque el catálogo solo se consulta
