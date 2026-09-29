@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { resolveAssignee, assignConversation } from './assign';
+import { resolveAssignee, resolveBySalesrep, assignConversation } from './assign';
 
 /**
  * Minimal Supabase stand-in: `profiles` lookups answer from `members`,
@@ -10,6 +10,7 @@ import { resolveAssignee, assignConversation } from './assign';
  */
 function makeDb(opts: {
   members?: { accountId: string; userId: string }[];
+  reps?: { accountId: string; userId: string; salesrepId: string }[];
   rpcResult?: string | null;
   rpcError?: boolean;
 }) {
@@ -37,6 +38,14 @@ function makeDb(opts: {
         },
         maybeSingle: async () => {
           if (table !== 'profiles') return { data: null, error: null };
+          if (filters.netsuite_salesrep_id !== undefined) {
+            const rep = (opts.reps ?? []).find(
+              (r) =>
+                r.accountId === filters.account_id &&
+                r.salesrepId === filters.netsuite_salesrep_id
+            );
+            return { data: rep ? { user_id: rep.userId } : null, error: null };
+          }
           const hit = members.find(
             (m) =>
               m.accountId === filters.account_id && m.userId === filters.user_id
@@ -146,5 +155,35 @@ describe('assignConversation', () => {
     const { db, updates } = makeDb({});
     await assignConversation(db, 'conv-1', ACCOUNT, 'agent-1');
     expect(updates[0]._account).toBe(ACCOUNT);
+  });
+});
+
+describe('resolveBySalesrep', () => {
+  it('encuentra al perfil que reclama ese salesrep', async () => {
+    const { db } = makeDb({
+      reps: [{ accountId: ACCOUNT, userId: 'agent-1', salesrepId: '147' }],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
+      ok: true,
+      agentId: 'agent-1',
+    });
+  });
+
+  it('no cruza cuentas: un salesrep de otra cuenta no vale', async () => {
+    const { db } = makeDb({
+      reps: [{ accountId: 'otra-cuenta', userId: 'agent-9', salesrepId: '147' }],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
+      ok: false,
+      reason: 'salesrep_not_mapped',
+    });
+  });
+
+  it('avisa cuando nadie lo reclama', async () => {
+    const { db } = makeDb({ reps: [] });
+    expect(await resolveBySalesrep(db, ACCOUNT, '999')).toEqual({
+      ok: false,
+      reason: 'salesrep_not_mapped',
+    });
   });
 });

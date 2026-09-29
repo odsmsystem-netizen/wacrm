@@ -78,7 +78,9 @@ export type ResolvedAssignee =
   /** `'auto'` ran and the account has nobody eligible. */
   | { ok: false; reason: 'no_agent_available' }
   /** An explicit id that doesn't belong to this account. */
-  | { ok: false; reason: 'not_a_member' };
+  | { ok: false; reason: 'not_a_member' }
+  /** A NetSuite salesrep id that no profile in this account claims. */
+  | { ok: false; reason: 'salesrep_not_mapped' };
 
 /**
  * Resolve `target` into a concrete agent id (or null to unassign).
@@ -103,6 +105,29 @@ export async function resolveAssignee(
     return { ok: false, reason: 'not_a_member' };
   }
   return { ok: true, agentId: target };
+}
+
+/**
+ * Resolve a NetSuite salesrep id into the profile that claims it.
+ *
+ * Scoped by account because those ids are only unique inside the
+ * NetSuite instance that issued them — two accounts could legitimately
+ * use the same one.
+ */
+export async function resolveBySalesrep(
+  db: SupabaseClient,
+  accountId: string,
+  salesrepId: string
+): Promise<ResolvedAssignee> {
+  const { data } = await db
+    .from('profiles')
+    .select('user_id')
+    .eq('account_id', accountId)
+    .eq('netsuite_salesrep_id', salesrepId)
+    .maybeSingle();
+
+  if (!data?.user_id) return { ok: false, reason: 'salesrep_not_mapped' };
+  return { ok: true, agentId: data.user_id };
 }
 
 /**
