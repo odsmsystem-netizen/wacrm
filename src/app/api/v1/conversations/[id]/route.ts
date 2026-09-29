@@ -13,7 +13,8 @@ import {
   normalizeConversation,
 } from '@/lib/inbox/conversations';
 import { serializeConversation } from '@/lib/api/v1/conversations';
-import { resolveAssignee, assignConversation } from '@/lib/conversations/assign';
+import { resolveAssignee, resolveBySalesrep, assignConversation } from '@/lib/conversations/assign';
+import type { ResolvedAssignee } from '@/lib/conversations/assign';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Conversation } from '@/types';
 
@@ -61,7 +62,9 @@ export async function GET(
  * Body (every field optional; at least one required):
  *   {
  *     "assigned_agent_id": "<uuid>" | "auto" | null,
- *     "status": "open" | "pending" | "closed"
+ *     "assigned_salesrep_id": "<netsuite salesrep id>",
+ *     "status": "open" | "pending" | "closed",
+ *     "ai_autoreply_disabled": true | false
  *   }
  *
  * `"auto"` hands the choice to the round-robin: the agent who has gone
@@ -79,6 +82,18 @@ export async function GET(
  *
  * Assigning refreshes `assigned_at`, so don't call it on a loop with an
  * explicit id or that agent keeps going to the back of the queue.
+ *
+ * `assigned_salesrep_id` is the NetSuite id of the customer's rep —
+ * resolved to whichever profile claims it (`profiles.netsuite_salesrep_id`)
+ * and assigned exactly like an explicit `assigned_agent_id` would be.
+ * Mutually exclusive with `assigned_agent_id`: sending both is a 400,
+ * because guessing which one wins is worse than rejecting the request.
+ * When nobody claims the id, this returns `409 salesrep_not_mapped`
+ * rather than silently falling back — the caller decides how to route
+ * from there.
+ *
+ * `ai_autoreply_disabled` just writes that column; the inbox paints its
+ * "Claudia IA is answering" banner off it, independent of assignment.
  */
 export async function PATCH(
   request: Request,
@@ -94,11 +109,25 @@ export async function PATCH(
     }
 
     const wantsAssign = 'assigned_agent_id' in body;
+    const wantsSalesrep = 'assigned_salesrep_id' in body;
     const wantsStatus = 'status' in body;
-    if (!wantsAssign && !wantsStatus) {
+    const wantsPause = 'ai_autoreply_disabled' in body;
+
+    if (!wantsAssign && !wantsSalesrep && !wantsStatus && !wantsPause) {
       return fail(
         'bad_request',
-        "Nothing to update: send 'assigned_agent_id' and/or 'status'",
+        "Nothing to update: send 'assigned_agent_id', 'assigned_salesrep_id', 'status' and/or 'ai_autoreply_disabled'",
+        400
+      );
+    }
+
+    // Mutuamente excluyentes a propósito: con los dos puestos habría que
+    // adivinar cuál gana, y adivinar a quién llega un cliente es peor
+    // que rechazar la petición.
+    if (wantsAssign && wantsSalesrep) {
+      return fail(
+        'bad_request',
+        "Send either 'assigned_agent_id' or 'assigned_salesrep_id', not both",
         400
       );
     }
@@ -125,6 +154,14 @@ export async function PATCH(
       );
     }
 
+    if (wantsSalesrep && typeof body.assigned_salesrep_id !== 'string') {
+      return fail('bad_request', "'assigned_salesrep_id' must be a string", 400);
+    }
+
+    if (wantsPause && typeof body.ai_autoreply_disabled !== 'boolean') {
+      return fail('bad_request', "'ai_autoreply_disabled' must be a boolean", 400);
+    }
+
     // Existence + ownership first, so a foreign id gets 404 rather than
     // a silent no-op that looks like success. `assigned_agent_id` comes
     // along because "auto" needs to know whether someone already has it.
@@ -147,8 +184,26 @@ export async function PATCH(
     // agent already typing to them.
     const alreadyOwned = wantsAssign && target === 'auto' && existing.assigned_agent_id;
 
-    if (wantsAssign && !alreadyOwned) {
-      const resolved = await resolveAssignee(ctx.supabase, ctx.accountId, target);
+    let resolved: ResolvedAssignee | undefined;
+
+    if (wantsSalesrep) {
+      resolved = await resolveBySalesrep(
+        ctx.supabase,
+        ctx.accountId,
+        body.assigned_salesrep_id
+      );
+      if (!resolved.ok && resolved.reason === 'salesrep_not_mapped') {
+        // 409 y no 404: la conversación existe y la petición es válida;
+        // lo que falta es que alguien del equipo reclame ese id. Quien
+        // llama decide si reparte de otra forma — el CRM no elige por su
+        // cuenta a quién mandar un cliente. El código de error ES el
+        // motivo (mismo patrón que `no_agent_available` abajo), para que
+        // quien llama pueda ramificar sobre `error.code` sin parsear el
+        // mensaje humano.
+        return fail('salesrep_not_mapped', 'No profile claims that salesrep id', 409);
+      }
+    } else if (wantsAssign && !alreadyOwned) {
+      resolved = await resolveAssignee(ctx.supabase, ctx.accountId, target);
 
       if (!resolved.ok) {
         // Nobody eligible — an account whose only members are viewers,
@@ -171,15 +226,21 @@ export async function PATCH(
           400
         );
       }
+    }
 
+    if (resolved?.ok) {
       // Writes `assigned_at` too, which is what keeps the rotation fair.
       await assignConversation(ctx.supabase, id, ctx.accountId, resolved.agentId);
     }
 
-    if (wantsStatus) {
+    if (wantsStatus || wantsPause) {
+      const update: Record<string, unknown> = {};
+      if (wantsStatus) update.status = body.status;
+      if (wantsPause) update.ai_autoreply_disabled = body.ai_autoreply_disabled;
+
       const { error } = await ctx.supabase
         .from('conversations')
-        .update({ status: body.status })
+        .update(update)
         .eq('id', id)
         .eq('account_id', ctx.accountId);
       if (error) {
