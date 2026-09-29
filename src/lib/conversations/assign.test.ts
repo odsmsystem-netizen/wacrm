@@ -169,7 +169,24 @@ describe('resolveBySalesrep', () => {
     });
   });
 
-  it('no cruza cuentas: un salesrep de otra cuenta no vale', async () => {
+  // El mismo salesrepId existe en dos cuentas. El de 'otra-cuenta' va
+  // PRIMERO en el array a propósito: un `.find()` sin filtrar por cuenta
+  // lo encontraría antes que al correcto y esta prueba fallaría — que es
+  // justo lo que debe pasar si alguien borra el `.eq('account_id', ...)`.
+  it('no cruza cuentas: con el mismo salesrepId en dos cuentas, resuelve al de la cuenta pedida', async () => {
+    const { db } = makeDb({
+      reps: [
+        { accountId: 'otra-cuenta', userId: 'agent-9', salesrepId: '147' },
+        { accountId: ACCOUNT, userId: 'agent-1', salesrepId: '147' },
+      ],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
+      ok: true,
+      agentId: 'agent-1',
+    });
+  });
+
+  it('un salesrep que solo existe en otra cuenta no vale', async () => {
     const { db } = makeDb({
       reps: [{ accountId: 'otra-cuenta', userId: 'agent-9', salesrepId: '147' }],
     });
