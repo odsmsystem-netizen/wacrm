@@ -104,7 +104,10 @@ venda se queda con la columna en `NULL`.
 Hoy admite `assigned_agent_id` con un id, `"auto"` o `null`. Se añade:
 
 ```jsonc
-{ "assigned_salesrep_id": "147" }   // el salesrep_id de NetSuite
+{
+  "assigned_salesrep_id": "147",      // el salesrep_id de NetSuite
+  "ai_autoreply_disabled": true       // deja el mismo estado que «Tomar control»
+}
 ```
 
 wacrm lo traduce al perfil cuyo `netsuite_salesrep_id` coincide, dentro
@@ -119,6 +122,9 @@ Reglas:
 - Si ningún perfil tiene ese id, responde `409` con
   `reason: "salesrep_not_mapped"`. No reparte por su cuenta: el CRM no
   decide a quién mandar un cliente cuando el destino pedido no existe.
+- `ai_autoreply_disabled` se acepta como campo propio, opcional. Es lo
+  que mantiene la bandeja diciendo la verdad sobre quién atiende ese
+  chat (ver «Convive con el botón Tomar control»).
 
 Archivos: `supabase/migrations/046_*.sql`,
 `src/app/api/v1/conversations/[id]/route.ts`, y una función
@@ -170,8 +176,43 @@ en esa conversación ni en las siguientes.
 ### Claudia se calla sola
 
 No hay que construir nada: `sondeo_wacrm.py:349` ya descarta las
-conversaciones que tienen `assigned_agent_id`. Asignar a una persona
-basta para que Claudia deje de responder en ese chat.
+conversaciones que tienen `assigned_agent_id` **o**
+`ai_autoreply_disabled`. Asignar a una persona basta para que Claudia
+deje de responder en ese chat.
+
+### Convive con el botón «Tomar control» que ya existe
+
+La bandeja ya tiene una palanca para esto, y la derivación tiene que
+dejar el mismo estado que ella o el equipo verá información falsa.
+
+`POST /api/ai/autoreply/{conversationId}` con `{paused: true,
+assign_to_me: true}` es el botón **Tomar control**: pausa el bot
+(`ai_autoreply_disabled = true`) **y** asigna la conversación a quien
+pulsa. Con `{paused: false}` hace el camino inverso —«Devolver a la
+IA»—: limpia la pausa, reinicia el contador de respuestas, borra la nota
+de handoff y desasigna si el llamante la tenía.
+
+El comentario de `src/lib/ai/external-agent.ts` explica por qué el
+banner se muestra aunque el bot nativo esté apagado: con un agente
+externo como Claudia, sin ese banner el equipo perdería «la única
+palanca que detiene a un bot a mitad de conversación».
+
+Dos consecuencias para este diseño:
+
+**La derivación debe pausar, no solo asignar.** El banner se pinta
+mirando `ai_autoreply_disabled`. Si Claudia solo asignara, la bandeja
+seguiría anunciando «Claudia IA está respondiendo» en un chat que ella
+ya abandonó — y el vendedor podría no contestar creyendo que está
+cubierto. Por eso el `PATCH` acepta también `ai_autoreply_disabled`, y
+Claudia manda ambos campos en la misma llamada. Se prefiere mandarlo
+explícito antes que hacer que asignar implique pausar: eso cambiaría en
+silencio el significado del `assigned_agent_id` que ya usan las
+automatizaciones.
+
+**La vuelta atrás ya existe y no hay que construirla.** Cuando el
+vendedor termina, «Devolver a la IA» limpia la pausa y desasigna, y
+Claudia retoma el hilo en el siguiente sondeo. El cliente derivado no se
+queda fuera de su alcance para siempre.
 
 ## Privacidad: qué se le dice a quien pregunta
 
@@ -199,6 +240,7 @@ decisión tomada, no un descuido.
 | Varias empresas parecidas | Pregunta cuál. Con más de tres candidatos, pide el RFC |
 | No encuentra nada | Lo trata como nuevo, sin hacerlo sentir mal |
 | Conversación ya asignada + `/agente` | No se reasigna. Quitarle el cliente a quien ya lo atiende es peor que no hacer nada |
+| Un vendedor ya pulsó «Tomar control» | El sondeo ya descarta ese chat, así que Claudia ni se entera del `/agente`. Correcto: la persona manda |
 | El cliente ignora la pregunta y pide un precio | Se le responde el precio. La identificación se retoma después, o se abandona |
 | Ya identificado antes | Saluda y sigue. Sin repetir el interrogatorio |
 | Dice ser habitual y no está | Pasa al flujo de nuevo, sin señalar la contradicción |
@@ -234,6 +276,8 @@ ser interrogado.
 | Razón social que no calza | Buscar parecidos y confirmar con el cliente |
 | Control del flujo | Híbrido: código para lo infalible, prompt para lo conversacional |
 | Traducción salesrep → agente | En wacrm, dentro del `PATCH` |
+| Estado al derivar | Asignar **y** pausar, igual que «Tomar control» |
+| Volver a Claudia | Con «Devolver a la IA», que ya existe |
 | RFC en la respuesta | No se recita; solo se confirma la razón social |
 
 ## Pendiente del usuario
