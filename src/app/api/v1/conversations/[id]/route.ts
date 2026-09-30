@@ -159,6 +159,23 @@ export async function PATCH(
       return fail('bad_request', "'assigned_salesrep_id' must be a string", 400);
     }
 
+    // Una cadena vacía (o solo espacios) no es "asígnalo a quien sea": es
+    // una petición mal formada, probablemente un cliente de la API con un
+    // bug. Sin este chequeo, `resolveBySalesrep` no encuentra a nadie con
+    // ese id y cae al respaldo de la cuenta (migración 047), asignando la
+    // conversación a alguien que nadie pidió. Se recorta primero para que
+    // "  " tenga el mismo destino que "": ninguno de los dos es un id.
+    const salesrepId = wantsSalesrep
+      ? (body.assigned_salesrep_id as string).trim()
+      : undefined;
+    if (wantsSalesrep && salesrepId === '') {
+      return fail(
+        'bad_request',
+        "'assigned_salesrep_id' must not be empty",
+        400
+      );
+    }
+
     if (wantsPause && typeof body.ai_autoreply_disabled !== 'boolean') {
       return fail('bad_request', "'ai_autoreply_disabled' must be a boolean", 400);
     }
@@ -191,7 +208,7 @@ export async function PATCH(
       resolved = await resolveBySalesrep(
         ctx.supabase,
         ctx.accountId,
-        body.assigned_salesrep_id
+        salesrepId as string
       );
       if (!resolved.ok && resolved.reason === 'salesrep_not_mapped') {
         // 409 y no 404: la conversación existe y la petición es válida;

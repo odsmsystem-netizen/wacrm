@@ -224,6 +224,47 @@ describe('PATCH /api/v1/conversations/[id]', () => {
     expect(writes).toHaveLength(0);
   });
 
+  // Hallazgo 2: una cadena vacía no es "asígnalo a quien sea", es una
+  // petición mal formada. Antes del arreglo, `typeof '' === 'string'`
+  // pasaba la validación, `resolveBySalesrep` no encontraba a nadie con
+  // ese id y caía al respaldo de la cuenta -- asignando la conversación
+  // sin que nadie lo hubiera pedido de verdad.
+  it('assigned_salesrep_id vacío -> 400, no cae al respaldo', async () => {
+    const { db, writes } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-respaldo', is_salesrep_fallback: true },
+      ],
+    });
+    useAccountContext(db);
+
+    const res = await patch({ assigned_salesrep_id: '' });
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe('bad_request');
+    expect(writes).toHaveLength(0);
+  });
+
+  // Solo espacios se recorta y, si queda vacío, es el mismo 400 -- no un
+  // id "válido" que por casualidad no mapea a nadie.
+  it('assigned_salesrep_id de solo espacios -> 400, no cae al respaldo', async () => {
+    const { db, writes } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-respaldo', is_salesrep_fallback: true },
+      ],
+    });
+    useAccountContext(db);
+
+    const res = await patch({ assigned_salesrep_id: '   ' });
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe('bad_request');
+    expect(writes).toHaveLength(0);
+  });
+
   it('assigned_salesrep_id sin mapear -> 409 salesrep_not_mapped en el CUERPO de la respuesta', async () => {
     const { db, writes } = makeSupabase({
       conversations: [baseConversation()],
