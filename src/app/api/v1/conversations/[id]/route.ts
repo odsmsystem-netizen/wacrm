@@ -228,12 +228,28 @@ export async function PATCH(
       }
     }
 
+    // Cuando esta misma petición tanto asigna como toca status/pausa,
+    // ambas van en la MISMA escritura vía `assignConversation`'s `extra`.
+    // Supabase no da transacciones multi-sentencia desde el cliente: dos
+    // `.update()` consecutivos dejan una ventana donde, si el segundo
+    // falla, la conversación queda asignada a un vendedor con la IA
+    // todavía marcada activa (la bandeja miente y ambos le contestan al
+    // cliente). Fusionarlas en un solo UPDATE hace esa ventana imposible:
+    // o se escriben las dos cosas o no se escribe ninguna.
     if (resolved?.ok) {
-      // Writes `assigned_at` too, which is what keeps the rotation fair.
-      await assignConversation(ctx.supabase, id, ctx.accountId, resolved.agentId);
-    }
+      const extra: Record<string, unknown> = {};
+      if (wantsStatus) extra.status = body.status;
+      if (wantsPause) extra.ai_autoreply_disabled = body.ai_autoreply_disabled;
 
-    if (wantsStatus || wantsPause) {
+      // Writes `assigned_at` too, which is what keeps the rotation fair.
+      await assignConversation(
+        ctx.supabase,
+        id,
+        ctx.accountId,
+        resolved.agentId,
+        Object.keys(extra).length > 0 ? extra : undefined
+      );
+    } else if (wantsStatus || wantsPause) {
       const update: Record<string, unknown> = {};
       if (wantsStatus) update.status = body.status;
       if (wantsPause) update.ai_autoreply_disabled = body.ai_autoreply_disabled;

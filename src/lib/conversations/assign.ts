@@ -150,12 +150,22 @@ export async function resolveBySalesrep(
  * Returns false when nothing was updated (wrong account, or the
  * conversation doesn't exist), so callers can answer 404 rather than
  * reporting a success that never happened.
+ *
+ * `extra` folds additional columns into this SAME update — e.g. a public
+ * API PATCH that assigns a salesrep's mapped agent AND sets
+ * `ai_autoreply_disabled` in one request. Supabase gives us no
+ * multi-statement transaction from the client, so the only way to avoid a
+ * window where the assignment lands but the pause doesn't (inbox says
+ * "assigned" while Claudia is still answering) is to make it ONE write
+ * instead of two. Don't split `extra` back out into a second `.update()` —
+ * that's the exact bug this parameter exists to close.
  */
 export async function assignConversation(
   db: SupabaseClient,
   conversationId: string,
   accountId: string,
-  agentId: string | null
+  agentId: string | null,
+  extra?: Record<string, unknown>
 ): Promise<boolean> {
   const { data, error } = await db
     .from('conversations')
@@ -166,6 +176,7 @@ export async function assignConversation(
       // round-robin think that agent was served more recently than
       // they were.
       assigned_at: agentId ? new Date().toISOString() : null,
+      ...extra,
     })
     .eq('id', conversationId)
     .eq('account_id', accountId)
