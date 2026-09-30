@@ -68,6 +68,7 @@ function makeSupabase(opts: {
     // `.eq('account_id', ...)` de una consulta, el doble SÍ deja pasar una
     // fila de otra cuenta, como pasaría contra Supabase real.
     const appliedFilters = new Map<string, string>();
+    const appliedIsNull = new Map<string, unknown>();
     let mode: 'select' | 'update' | null = null;
     let payload: Record<string, unknown> = {};
 
@@ -84,6 +85,16 @@ function makeSupabase(opts: {
       const row = id ? conversations.get(id) : undefined;
       if (!matches(row)) {
         return { data: [], error: null };
+      }
+      // `.is('assigned_agent_id', null)` es la condición con la que
+      // assignConversation cierra la carrera: si alguien tomó la
+      // conversación entre la lectura y la escritura, el UPDATE no casa
+      // ninguna fila. El doble tiene que respetarlo o la prueba pasaría
+      // con una carrera que en producción sí ocurre.
+      for (const [col, val] of appliedIsNull) {
+        if ((row as Record<string, unknown>)[col] !== val) {
+          return { data: [], error: null };
+        }
       }
       Object.assign(row, payload);
       writes.push({ table: 'conversations', payload: { ...payload }, id: row.id });
@@ -102,6 +113,10 @@ function makeSupabase(opts: {
       },
       eq: (col: string, val: string) => {
         appliedFilters.set(col, val);
+        return b;
+      },
+      is: (col: string, val: unknown) => {
+        appliedIsNull.set(col, val);
         return b;
       },
       maybeSingle: async () => {
@@ -234,6 +249,54 @@ describe('PATCH /api/v1/conversations/[id]', () => {
   // "auto", no menos: dispara desde el bot, sin que nadie decida, así que
   // el robo pasaría inadvertido. La pausa sí se aplica: el bot se calla
   // igual, solo que no elige dueño nuevo.
+  // La carrera de verdad: el guard `alreadyOwned` mira la LECTURA, pero
+  // entre esa lectura y la escritura alguien puede pulsar «Tomar control».
+  // Se simula moviendo la fila justo después de que el endpoint la leyó.
+  // Sin la condición en el WHERE del UPDATE, esta prueba asigna igual y el
+  // vendedor pierde la conversación sin enterarse.
+  it('si alguien toma la conversación entre la lectura y la escritura, no se le quita', async () => {
+    const { db, conversations, writes } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-147', netsuite_salesrep_id: '147' },
+      ],
+    });
+    useAccountContext(db);
+
+    // El "otro" llega justo después de que el endpoint leyó la fila. Se
+    // muta la fila DEL DOBLE (`conversations`), no la que se le pasó al
+    // constructor: makeSupabase la copia, así que mutar la de fuera no la
+    // ve nadie y la prueba pasaría sin probar nada.
+    const original = db.from.bind(db);
+    let lecturas = 0;
+    (db as unknown as { from: unknown }).from = (tabla: string) => {
+      const b = original(tabla) as Record<string, unknown>;
+      const maybeSingle = b.maybeSingle as (() => Promise<unknown>) | undefined;
+      if (typeof maybeSingle === 'function') {
+        b.maybeSingle = async () => {
+          const r = await maybeSingle.call(b);
+          if (tabla === 'conversations' && lecturas++ === 0) {
+            const fila = conversations.get(CONV_ID);
+            if (fila) fila.assigned_agent_id = 'humano-que-llego-primero';
+          }
+          return r;
+        };
+      }
+      return b;
+    };
+
+    const res = await patch({ assigned_salesrep_id: '147', ai_autoreply_disabled: true });
+
+    expect(res.status).toBe(200);
+    // Sigue siendo del humano: el UPDATE no casó ninguna fila.
+    expect(conversations.get(CONV_ID)?.assigned_agent_id).toBe('humano-que-llego-primero');
+    // Pero la pausa SÍ se aplicó: el cliente ya tiene a su persona, así
+    // que el bot calla igual. Sin esto, perder la carrera dejaba a Claudia
+    // contestando encima del vendedor.
+    expect(writes.some((w) => w.payload.ai_autoreply_disabled === true)).toBe(true);
+    expect(writes.every((w) => !('assigned_agent_id' in w.payload))).toBe(true);
+  });
+
   it('assigned_salesrep_id NO le quita la conversación a un humano que ya la tiene', async () => {
     const { db, writes } = makeSupabase({
       conversations: [baseConversation({ assigned_agent_id: 'humano-que-ya-la-tomo' })],

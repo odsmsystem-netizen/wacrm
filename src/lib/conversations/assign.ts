@@ -219,9 +219,10 @@ export async function assignConversation(
   conversationId: string,
   accountId: string,
   agentId: string | null,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
+  onlyIfUnassigned = false
 ): Promise<boolean> {
-  const { data, error } = await db
+  let q = db
     .from('conversations')
     .update({
       assigned_agent_id: agentId,
@@ -233,12 +234,26 @@ export async function assignConversation(
       ...extra,
     })
     .eq('id', conversationId)
-    .eq('account_id', accountId)
-    .select('id');
+    .eq('account_id', accountId);
+
+  // `onlyIfUnassigned` cierra la carrera entre "miré y no tenía dueño" y
+  // "se lo asigné". El endpoint lee la conversación para decidir si ya la
+  // tiene un humano, pero entre esa lectura y esta escritura alguien pudo
+  // pulsar «Tomar control». Comprobarlo en el WHERE hace que la condición
+  // y la escritura ocurran a la vez: o sigue libre y se asigna, o ya no lo
+  // está y no se toca nada. Solo aplica a las asignaciones automáticas —
+  // "auto" y el salesrep del bot—; un id explícito es una persona
+  // decidiendo, y esa sí puede reasignar.
+  if (onlyIfUnassigned) q = q.is('assigned_agent_id', null);
+
+  const { data, error } = await q.select('id');
 
   if (error) {
     console.error('[assign] update failed:', error);
     throw error;
   }
+  // false = no se escribió nada: la conversación no existe, es de otra
+  // cuenta, o —con onlyIfUnassigned— alguien la tomó primero. Quien llama
+  // TIENE que mirar esto: ignorarlo es reportar un éxito que no ocurrió.
   return (data?.length ?? 0) > 0;
 }

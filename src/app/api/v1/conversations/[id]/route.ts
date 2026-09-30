@@ -280,20 +280,36 @@ export async function PATCH(
     // todavía marcada activa (la bandeja miente y ambos le contestan al
     // cliente). Fusionarlas en un solo UPDATE hace esa ventana imposible:
     // o se escriben las dos cosas o no se escribe ninguna.
+    // Una asignación AUTOMÁTICA — "auto" o el salesrep que manda el bot —
+    // no puede pisar a un humano. El guard `alreadyOwned` de arriba mira
+    // la lectura, pero entre esa lectura y esta escritura alguien pudo
+    // pulsar «Tomar control»; por eso la condición viaja también en el
+    // WHERE del UPDATE, donde se evalúa a la vez que se escribe.
+    const asignacionAutomatica = wantsSalesrep || (wantsAssign && target === 'auto');
+
+    let asignado = false;
     if (resolved?.ok) {
       const extra: Record<string, unknown> = {};
       if (wantsStatus) extra.status = body.status;
       if (wantsPause) extra.ai_autoreply_disabled = body.ai_autoreply_disabled;
 
       // Writes `assigned_at` too, which is what keeps the rotation fair.
-      await assignConversation(
+      asignado = await assignConversation(
         ctx.supabase,
         id,
         ctx.accountId,
         resolved.agentId,
-        Object.keys(extra).length > 0 ? extra : undefined
+        Object.keys(extra).length > 0 ? extra : undefined,
+        asignacionAutomatica
       );
-    } else if (wantsStatus || wantsPause) {
+    }
+
+    // Si la asignación automática perdió la carrera, la conversación se
+    // queda con quien la tomó — pero la pausa SÍ debe aplicarse igual: el
+    // cliente pidió una persona y ya la tiene, así que el bot se calla de
+    // todos modos. Sin esto, perder la carrera dejaba a Claudia
+    // contestando encima del vendedor.
+    if (!asignado && (wantsStatus || wantsPause)) {
       const update: Record<string, unknown> = {};
       if (wantsStatus) update.status = body.status;
       if (wantsPause) update.ai_autoreply_disabled = body.ai_autoreply_disabled;
