@@ -13,6 +13,7 @@ function makeDb(opts: {
   reps?: { accountId: string; userId: string; salesrepId: string }[];
   rpcResult?: string | null;
   rpcError?: boolean;
+  repsError?: boolean;
 }) {
   const updates: Record<string, unknown>[] = [];
   const members = opts.members ?? [];
@@ -39,6 +40,9 @@ function makeDb(opts: {
         maybeSingle: async () => {
           if (table !== 'profiles') return { data: null, error: null };
           if (filters.netsuite_salesrep_id !== undefined) {
+            if (opts.repsError) {
+              return { data: null, error: { message: 'permission denied' } };
+            }
             const rep = (opts.reps ?? []).find(
               (r) =>
                 r.accountId === filters.account_id &&
@@ -202,5 +206,18 @@ describe('resolveBySalesrep', () => {
       ok: false,
       reason: 'salesrep_not_mapped',
     });
+  });
+
+  // Un error de base de datos NO es "nadie lo reclama": es un
+  // malfuncionamiento (permiso, conexión) que hay que distinguir, igual que
+  // `resolveAssignee`/'auto' distingue el RPC roto de "no hay agente". Antes
+  // de este arreglo, `resolveBySalesrep` ignoraba `error` y devolvía
+  // `salesrep_not_mapped` igual, mandando a quien depure en la dirección
+  // equivocada.
+  it('propaga el error de la consulta en vez de decir salesrep_not_mapped', async () => {
+    const { db } = makeDb({ repsError: true });
+    await expect(resolveBySalesrep(db, ACCOUNT, '147')).rejects.toThrow(
+      /resolveBySalesrep failed/
+    );
   });
 });

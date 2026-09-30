@@ -119,12 +119,22 @@ export async function resolveBySalesrep(
   accountId: string,
   salesrepId: string
 ): Promise<ResolvedAssignee> {
-  const { data } = await db
+  const { data, error } = await db
     .from('profiles')
     .select('user_id')
     .eq('account_id', accountId)
     .eq('netsuite_salesrep_id', salesrepId)
     .maybeSingle();
+
+  // Same failure-mode split as `pickNextAgent` above: a query error is a
+  // malfunction (bad GRANT, connection lost, RLS misconfigured) and must
+  // not collapse into "nobody claims this id". `salesrep_not_mapped` tells
+  // a caller "go register that rep"; a swallowed DB error would tell them
+  // the same thing while the actual problem — the database — goes
+  // unnoticed, same as the bug migration 031 exists for.
+  if (error) {
+    throw new Error(`resolveBySalesrep failed: ${error.message}`);
+  }
 
   if (!data?.user_id) return { ok: false, reason: 'salesrep_not_mapped' };
   return { ok: true, agentId: data.user_id };
