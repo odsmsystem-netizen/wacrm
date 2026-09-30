@@ -47,6 +47,7 @@ type ProfileRow = {
   account_id: string;
   user_id: string;
   netsuite_salesrep_id?: string;
+  is_salesrep_fallback?: boolean;
 };
 
 type Write = { table: string; payload: Record<string, unknown>; id: string };
@@ -124,10 +125,10 @@ function makeSupabase(opts: {
   }
 
   function profilesBuilder() {
-    const filters: Record<string, string> = {};
+    const filters: Record<string, string | boolean> = {};
     const b: Record<string, unknown> = {
       select: () => b,
-      eq: (col: string, val: string) => {
+      eq: (col: string, val: string | boolean) => {
         filters[col] = val;
         return b;
       },
@@ -137,6 +138,12 @@ function makeSupabase(opts: {
             (p) =>
               p.account_id === filters.account_id &&
               p.netsuite_salesrep_id === filters.netsuite_salesrep_id
+          );
+          return { data: hit ? { user_id: hit.user_id } : null, error: null };
+        }
+        if (filters.is_salesrep_fallback !== undefined) {
+          const hit = profiles.find(
+            (p) => p.account_id === filters.account_id && p.is_salesrep_fallback === true
           );
           return { data: hit ? { user_id: hit.user_id } : null, error: null };
         }
@@ -307,6 +314,39 @@ describe('PATCH /api/v1/conversations/[id]', () => {
     });
 
     expect(conversations.get(CONV_ID)?.assigned_agent_id).toBe('agent-42');
+    expect(conversations.get(CONV_ID)?.ai_autoreply_disabled).toBe(true);
+  });
+
+  // Migración 047, de punta a punta: un salesrep sin mapear pero con
+  // respaldo designado en la cuenta asigna al respaldo Y pausa la IA en
+  // la MISMA escritura — el mismo hallazgo que la prueba de arriba, ahora
+  // por el camino del respaldo en vez del salesrep mapeado directo.
+  it('salesrep sin mapear con respaldo designado asigna al respaldo y pausa la IA en UNA sola escritura', async () => {
+    const { db, conversations, writes } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-respaldo', is_salesrep_fallback: true },
+      ],
+    });
+    useAccountContext(db);
+
+    const res = await patch({
+      assigned_salesrep_id: '999', // nadie lo reclama directamente
+      ai_autoreply_disabled: true,
+    });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.assigned_agent_id).toBe('agent-respaldo');
+    expect(json.data.ai_autoreply_disabled).toBe(true);
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0].payload).toMatchObject({
+      assigned_agent_id: 'agent-respaldo',
+      ai_autoreply_disabled: true,
+    });
+
+    expect(conversations.get(CONV_ID)?.assigned_agent_id).toBe('agent-respaldo');
     expect(conversations.get(CONV_ID)?.ai_autoreply_disabled).toBe(true);
   });
 });

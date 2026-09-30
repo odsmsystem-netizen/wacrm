@@ -11,9 +11,11 @@ import { resolveAssignee, resolveBySalesrep, assignConversation } from './assign
 function makeDb(opts: {
   members?: { accountId: string; userId: string }[];
   reps?: { accountId: string; userId: string; salesrepId: string }[];
+  fallbacks?: { accountId: string; userId: string }[];
   rpcResult?: string | null;
   rpcError?: boolean;
   repsError?: boolean;
+  fallbackError?: boolean;
 }) {
   const updates: Record<string, unknown>[] = [];
   const members = opts.members ?? [];
@@ -25,7 +27,7 @@ function makeDb(opts: {
         : { data: opts.rpcResult ?? null, error: null }
     ),
     from: (table: string) => {
-      const filters: Record<string, string> = {};
+      const filters: Record<string, string | boolean> = {};
       let payload: Record<string, unknown> = {};
       const b: Record<string, unknown> = {
         select: () => b,
@@ -33,7 +35,7 @@ function makeDb(opts: {
           payload = p;
           return b;
         },
-        eq: (col: string, val: string) => {
+        eq: (col: string, val: string | boolean) => {
           filters[col] = val;
           return b;
         },
@@ -49,6 +51,15 @@ function makeDb(opts: {
                 r.salesrepId === filters.netsuite_salesrep_id
             );
             return { data: rep ? { user_id: rep.userId } : null, error: null };
+          }
+          if (filters.is_salesrep_fallback !== undefined) {
+            if (opts.fallbackError) {
+              return { data: null, error: { message: 'permission denied' } };
+            }
+            const fb = (opts.fallbacks ?? []).find(
+              (f) => f.accountId === filters.account_id
+            );
+            return { data: fb ? { user_id: fb.userId } : null, error: null };
           }
           const hit = members.find(
             (m) =>
@@ -80,6 +91,7 @@ describe('resolveAssignee', () => {
     expect(await resolveAssignee(db, ACCOUNT, null)).toEqual({
       ok: true,
       agentId: null,
+      viaFallback: false,
     });
   });
 
@@ -90,6 +102,7 @@ describe('resolveAssignee', () => {
     expect(await resolveAssignee(db, ACCOUNT, 'agent-1')).toEqual({
       ok: true,
       agentId: 'agent-1',
+      viaFallback: false,
     });
   });
 
@@ -112,6 +125,7 @@ describe('resolveAssignee', () => {
     expect(await resolveAssignee(db, ACCOUNT, 'auto')).toEqual({
       ok: true,
       agentId: 'agent-next',
+      viaFallback: false,
     });
   });
 
@@ -170,6 +184,7 @@ describe('resolveBySalesrep', () => {
     expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
       ok: true,
       agentId: 'agent-1',
+      viaFallback: false,
     });
   });
 
@@ -187,6 +202,7 @@ describe('resolveBySalesrep', () => {
     expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
       ok: true,
       agentId: 'agent-1',
+      viaFallback: false,
     });
   });
 
@@ -217,6 +233,83 @@ describe('resolveBySalesrep', () => {
   it('propaga el error de la consulta en vez de decir salesrep_not_mapped', async () => {
     const { db } = makeDb({ repsError: true });
     await expect(resolveBySalesrep(db, ACCOUNT, '147')).rejects.toThrow(
+      /resolveBySalesrep failed/
+    );
+  });
+
+  // Migración 047: cuatro representantes de NetSuite tienen cartera pero
+  // nunca van a tener usuario en wacrm; la cuenta puede designar un
+  // respaldo que reciba esos clientes en vez de repartirlos al azar.
+  it('un salesrep mapeado resuelve a su propio usuario y NO al respaldo', async () => {
+    const { db } = makeDb({
+      reps: [{ accountId: ACCOUNT, userId: 'agent-1', salesrepId: '147' }],
+      fallbacks: [{ accountId: ACCOUNT, userId: 'agent-respaldo' }],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '147')).toEqual({
+      ok: true,
+      agentId: 'agent-1',
+      viaFallback: false,
+    });
+  });
+
+  it('un salesrep sin mapear, con respaldo designado, resuelve al respaldo y lo marca', async () => {
+    const { db } = makeDb({
+      reps: [],
+      fallbacks: [{ accountId: ACCOUNT, userId: 'agent-respaldo' }],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '999')).toEqual({
+      ok: true,
+      agentId: 'agent-respaldo',
+      viaFallback: true,
+    });
+  });
+
+  it('un salesrep sin mapear, sin respaldo, sigue devolviendo salesrep_not_mapped', async () => {
+    const { db } = makeDb({ reps: [], fallbacks: [] });
+    expect(await resolveBySalesrep(db, ACCOUNT, '999')).toEqual({
+      ok: false,
+      reason: 'salesrep_not_mapped',
+    });
+  });
+
+  // El respaldo de OTRA cuenta nunca debe usarse — la misma clase de fuga
+  // entre cuentas que el filtro de account_id de la migración 046 evita.
+  it('el respaldo de otra cuenta no vale, aunque nadie designe uno en la cuenta pedida', async () => {
+    const { db } = makeDb({
+      reps: [],
+      fallbacks: [{ accountId: 'otra-cuenta', userId: 'agent-ajeno' }],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '999')).toEqual({
+      ok: false,
+      reason: 'salesrep_not_mapped',
+    });
+  });
+
+  // Mismo patrón que la prueba de `reps` que no cruza cuentas, arriba: dos
+  // cuentas con respaldo, el de 'otra-cuenta' PRIMERO en el array a
+  // propósito. Si alguien borra el `.eq('account_id', ...)` de la consulta
+  // del respaldo, esta prueba se pone roja (deja de encontrar cualquiera de
+  // los dos, porque el doble solo compara filtros que de verdad se aplican).
+  it('el respaldo se busca en la MISMA cuenta: con respaldo en dos cuentas, resuelve al de la cuenta pedida', async () => {
+    const { db } = makeDb({
+      reps: [],
+      fallbacks: [
+        { accountId: 'otra-cuenta', userId: 'agent-ajeno' },
+        { accountId: ACCOUNT, userId: 'agent-respaldo' },
+      ],
+    });
+    expect(await resolveBySalesrep(db, ACCOUNT, '999')).toEqual({
+      ok: true,
+      agentId: 'agent-respaldo',
+      viaFallback: true,
+    });
+  });
+
+  // Mismo trato que el error al buscar el salesrep directo: un fallo de
+  // BD buscando el respaldo tampoco puede colapsar en "no hay respaldo".
+  it('un error de base de datos al buscar el respaldo lanza, no se traga', async () => {
+    const { db } = makeDb({ reps: [], fallbackError: true });
+    await expect(resolveBySalesrep(db, ACCOUNT, '999')).rejects.toThrow(
       /resolveBySalesrep failed/
     );
   });
