@@ -390,6 +390,50 @@ describe('PATCH /api/v1/conversations/[id]', () => {
     expect(conversations.get(CONV_ID)?.assigned_agent_id).toBe('agent-respaldo');
     expect(conversations.get(CONV_ID)?.ai_autoreply_disabled).toBe(true);
   });
+
+  // Hallazgo 1: `resolveBySalesrep` calcula `viaFallback` y nadie lo usaba.
+  // El camino del respaldo debe dejar rastro -- si no, la conversación de
+  // un cliente de un representante sin cuenta en el CRM aparece asignada
+  // a otra persona sin ninguna pista de por qué.
+  it('el camino del respaldo queda registrado; el mapeo directo no', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { db } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-respaldo', is_salesrep_fallback: true },
+      ],
+    });
+    useAccountContext(db);
+
+    const res = await patch({ assigned_salesrep_id: '999' });
+    expect(res.status).toBe(200);
+
+    expect(info).toHaveBeenCalledTimes(1);
+    const [, data] = info.mock.calls[0];
+    expect(data).toMatchObject({
+      conversationId: CONV_ID,
+      requestedSalesrepId: '999',
+      assignedAgentId: 'agent-respaldo',
+    });
+
+    info.mockRestore();
+  });
+
+  it('el mapeo directo por salesrep NO se registra como respaldo', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { db } = makeSupabase({
+      conversations: [baseConversation()],
+      profiles: [{ account_id: ACCOUNT, user_id: 'agent-42', netsuite_salesrep_id: '147' }],
+    });
+    useAccountContext(db);
+
+    const res = await patch({ assigned_salesrep_id: '147' });
+    expect(res.status).toBe(200);
+
+    expect(info).not.toHaveBeenCalled();
+
+    info.mockRestore();
+  });
 });
 
 describe('GET /api/v1/conversations/[id]', () => {

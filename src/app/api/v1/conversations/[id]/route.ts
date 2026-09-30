@@ -220,6 +220,21 @@ export async function PATCH(
         // mensaje humano.
         return fail('salesrep_not_mapped', 'No profile claims that salesrep id', 409);
       }
+
+      // El respaldo (migración 047) es una desviación silenciosa por
+      // diseño para el cliente de la API -- por eso deja rastro aquí.
+      // Sin esto, la conversación de un cliente de un representante sin
+      // cuenta en el CRM aparece asignada a otra persona y quien depure
+      // tiene que saber de antemano que ese representante no tiene
+      // cuenta y quién es su respaldo. El mapeo directo no se registra:
+      // es el camino esperado, no el que hay que explicar.
+      if (resolved.ok && resolved.viaFallback) {
+        console.info('[api/v1/conversations] assigned_salesrep_id resolved via account fallback', {
+          conversationId: id,
+          requestedSalesrepId: salesrepId,
+          assignedAgentId: resolved.agentId,
+        });
+      }
     } else if (wantsAssign && !alreadyOwned) {
       resolved = await resolveAssignee(ctx.supabase, ctx.accountId, target);
 
