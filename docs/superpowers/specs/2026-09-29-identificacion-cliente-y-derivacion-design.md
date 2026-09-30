@@ -190,7 +190,18 @@ assign_to_me: true}` es el botón **Tomar control**: pausa el bot
 (`ai_autoreply_disabled = true`) **y** asigna la conversación a quien
 pulsa. Con `{paused: false}` hace el camino inverso —«Devolver a la
 IA»—: limpia la pausa, reinicia el contador de respuestas, borra la nota
-de handoff y desasigna si el llamante la tenía.
+de handoff y desasigna a quien la tuviera, sea quien sea y no solo si era
+el llamante.
+
+Ese «sea quien sea» es deliberado y este rasgo depende de él. Una
+conversación derivada queda asignada al representante, no a quien pulse
+después el botón. Si «Devolver a la IA» solo soltara la asignación propia
+del llamante, la del representante se quedaría puesta; y como la
+elegibilidad del autorespondedor se cae en cuanto hay un humano asignado,
+el bot seguiría callado y el botón no haría nada visible. El comentario en
+`src/app/api/ai/autoreply/[conversationId]/route.ts` lo dice igual. Quien
+lea esto y sienta la tentación de acotarlo al llamante: eso convierte
+«Devolver a la IA» en un botón que no hace nada.
 
 El comentario de `src/lib/ai/external-agent.ts` explica por qué el
 banner se muestra aunque el bot nativo esté apagado: con un agente
