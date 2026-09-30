@@ -85,7 +85,9 @@ export async function GET(
  *
  * `assigned_salesrep_id` is the NetSuite id of the customer's rep —
  * resolved to whichever profile claims it (`profiles.netsuite_salesrep_id`)
- * and assigned exactly like an explicit `assigned_agent_id` would be.
+ * and assigned like `assigned_agent_id: "auto"`, NOT like an explicit id:
+ * it never takes the conversation from a human who already has it. An
+ * explicit id is a person deciding; this one fires from the bot.
  * Mutually exclusive with `assigned_agent_id`: sending both is a 400,
  * because guessing which one wins is worse than rejecting the request.
  * When nobody claims the id, `resolveBySalesrep` (migration 047) tries the
@@ -195,16 +197,25 @@ export async function PATCH(
     }
     if (!existing) return fail('not_found', 'Conversation not found', 404);
 
-    // "auto" never takes a conversation away from whoever already has
-    // it. The caller asking for it is saying "nobody picked this up" —
-    // and between them checking and this request landing, somebody may
-    // have. Silently reassigning would pull a customer away from the
-    // agent already typing to them.
-    const alreadyOwned = wantsAssign && target === 'auto' && existing.assigned_agent_id;
+    // Neither "auto" nor a salesrep takes a conversation away from
+    // whoever already has it. The caller asking for either is saying
+    // "nobody picked this up" — and between them checking and this
+    // request landing, somebody may have. Silently reassigning would pull
+    // a customer away from the agent already typing to them.
+    //
+    // The salesrep path needs this MORE than "auto" does, not less: it
+    // fires from the AI agent without a human deciding, so nobody would
+    // notice the theft. The spec is explicit — once a person has the
+    // conversation, the person wins. The pause still applies below: the
+    // bot goes quiet either way, it just doesn't get to pick a new owner.
+    const alreadyOwned = Boolean(
+      ((wantsAssign && target === 'auto') || wantsSalesrep) &&
+        existing.assigned_agent_id
+    );
 
     let resolved: ResolvedAssignee | undefined;
 
-    if (wantsSalesrep) {
+    if (wantsSalesrep && !alreadyOwned) {
       resolved = await resolveBySalesrep(
         ctx.supabase,
         ctx.accountId,

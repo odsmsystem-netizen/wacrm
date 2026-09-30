@@ -229,6 +229,29 @@ describe('PATCH /api/v1/conversations/[id]', () => {
   // pasaba la validación, `resolveBySalesrep` no encontraba a nadie con
   // ese id y caía al respaldo de la cuenta -- asignando la conversación
   // sin que nadie lo hubiera pedido de verdad.
+  // La spec es explícita: una vez que una persona tiene la conversación,
+  // manda la persona. El camino del salesrep necesita ese guard MÁS que
+  // "auto", no menos: dispara desde el bot, sin que nadie decida, así que
+  // el robo pasaría inadvertido. La pausa sí se aplica: el bot se calla
+  // igual, solo que no elige dueño nuevo.
+  it('assigned_salesrep_id NO le quita la conversación a un humano que ya la tiene', async () => {
+    const { db, writes } = makeSupabase({
+      conversations: [baseConversation({ assigned_agent_id: 'humano-que-ya-la-tomo' })],
+      profiles: [
+        { account_id: ACCOUNT, user_id: 'agent-147', netsuite_salesrep_id: '147' },
+      ],
+    });
+    useAccountContext(db);
+
+    const res = await patch({ assigned_salesrep_id: '147', ai_autoreply_disabled: true });
+
+    expect(res.status).toBe(200);
+    // Una sola escritura, y NO toca assigned_agent_id: solo calla al bot.
+    expect(writes).toHaveLength(1);
+    expect(writes[0].payload).toMatchObject({ ai_autoreply_disabled: true });
+    expect(writes[0].payload).not.toHaveProperty('assigned_agent_id');
+  });
+
   it('assigned_salesrep_id vacío -> 400, no cae al respaldo', async () => {
     const { db, writes } = makeSupabase({
       conversations: [baseConversation()],
