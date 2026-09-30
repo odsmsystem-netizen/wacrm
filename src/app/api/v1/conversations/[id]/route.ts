@@ -88,9 +88,10 @@ export async function GET(
  * and assigned exactly like an explicit `assigned_agent_id` would be.
  * Mutually exclusive with `assigned_agent_id`: sending both is a 400,
  * because guessing which one wins is worse than rejecting the request.
- * When nobody claims the id, this returns `409 salesrep_not_mapped`
- * rather than silently falling back — the caller decides how to route
- * from there.
+ * When nobody claims the id, `resolveBySalesrep` (migration 047) tries the
+ * account's designated fallback profile next; only when THAT is also
+ * unset does this return `409 salesrep_not_mapped` rather than silently
+ * assigning nobody — the caller decides how to route from there.
  *
  * `ai_autoreply_disabled` just writes that column; the inbox paints its
  * "Claudia IA is answering" banner off it, independent of assignment.

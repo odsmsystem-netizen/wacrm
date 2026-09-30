@@ -72,9 +72,20 @@ export async function isAccountMember(
   return !!data;
 }
 
-/** What `resolveAssignee` concluded. */
+/**
+ * What `resolveAssignee` concluded.
+ *
+ * `viaFallback` is required, not optional, on purpose: every place that
+ * builds an `{ ok: true }` result has to say explicitly whether this
+ * agent was who was actually asked for or the account's designated
+ * catch-all. Making it optional would let a future resolver (say, one
+ * more routing rule added next to `resolveBySalesrep`) forget the field
+ * entirely and have it silently read as "not a fallback" — the same
+ * class of silent-default bug the `error` checks elsewhere in this file
+ * exist to avoid.
+ */
 export type ResolvedAssignee =
-  | { ok: true; agentId: string | null }
+  | { ok: true; agentId: string | null; viaFallback: boolean }
   /** `'auto'` ran and the account has nobody eligible. */
   | { ok: false; reason: 'no_agent_available' }
   /** An explicit id that doesn't belong to this account. */
@@ -92,19 +103,19 @@ export async function resolveAssignee(
   accountId: string,
   target: AssignTarget
 ): Promise<ResolvedAssignee> {
-  if (target === null) return { ok: true, agentId: null };
+  if (target === null) return { ok: true, agentId: null, viaFallback: false };
 
   if (target === 'auto') {
     const agentId = await pickNextAgent(db, accountId);
     return agentId
-      ? { ok: true, agentId }
+      ? { ok: true, agentId, viaFallback: false }
       : { ok: false, reason: 'no_agent_available' };
   }
 
   if (!(await isAccountMember(db, accountId, target))) {
     return { ok: false, reason: 'not_a_member' };
   }
-  return { ok: true, agentId: target };
+  return { ok: true, agentId: target, viaFallback: false };
 }
 
 /**
@@ -113,6 +124,14 @@ export async function resolveAssignee(
  * Scoped by account because those ids are only unique inside the
  * NetSuite instance that issued them — two accounts could legitimately
  * use the same one.
+ *
+ * Of NetSuite's real salesreps, 4 have a customer portfolio but will
+ * never get a wacrm account (product decision: one existing agent
+ * already covers them, so creating accounts nobody will log into isn't
+ * worth it). Without a fallback, those customers' conversations came
+ * back `salesrep_not_mapped`, the caller retried without a rep, and the
+ * conversation landed on whoever the round-robin happened to pick —
+ * i.e. anyone but the person who actually handles that account.
  */
 export async function resolveBySalesrep(
   db: SupabaseClient,
@@ -136,8 +155,43 @@ export async function resolveBySalesrep(
     throw new Error(`resolveBySalesrep failed: ${error.message}`);
   }
 
-  if (!data?.user_id) return { ok: false, reason: 'salesrep_not_mapped' };
-  return { ok: true, agentId: data.user_id };
+  if (data?.user_id) {
+    return { ok: true, agentId: data.user_id, viaFallback: false };
+  }
+
+  // Nobody claims that id directly. Before giving up, check whether this
+  // account designated a catch-all (migration 047). Most accounts won't
+  // have one — that's fine, `salesrep_not_mapped` below still covers it —
+  // but the ones that do get their unmapped reps routed on purpose
+  // instead of by whatever the round-robin lands on.
+  const { data: fallback, error: fallbackError } = await db
+    .from('profiles')
+    .select('user_id')
+    .eq('account_id', accountId)
+    .eq('is_salesrep_fallback', true)
+    .maybeSingle();
+
+  // Same reasoning as the `error` check above, applied to this second
+  // query: a broken lookup here must not read as "this account has no
+  // fallback" either, or a bad GRANT on this new column would silently
+  // widen back into the random-assignment bug this feature exists to
+  // close, with nothing in the logs to say why.
+  if (fallbackError) {
+    throw new Error(`resolveBySalesrep failed: ${fallbackError.message}`);
+  }
+
+  if (fallback?.user_id) {
+    // `viaFallback: true` instead of returning the fallback the same way
+    // as a direct match: a silent fallback is one nobody can diagnose.
+    // Without this flag, a conversation from one of Eva's customers
+    // shows up assigned to Pablo with no trace of why — whoever debugs
+    // it has to already know Eva has no CRM account and that Pablo is
+    // her stand-in. The flag lets that reasoning live in the code path
+    // instead of in someone's head.
+    return { ok: true, agentId: fallback.user_id, viaFallback: true };
+  }
+
+  return { ok: false, reason: 'salesrep_not_mapped' };
 }
 
 /**
