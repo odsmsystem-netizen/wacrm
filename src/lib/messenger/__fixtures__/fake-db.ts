@@ -20,11 +20,20 @@ export function makeFakeDb(seed: Record<string, Row[]> = {}) {
     const rows = (tables[table] ??= [])
     const filters: Array<[string, unknown]> = []
     let limitN = Infinity
+    let orderBy: { column: string; ascending: boolean } | null = null
     let op: { kind: 'select' | 'insert' | 'upsert' | 'update' | 'delete'; payload?: Row; ignore?: boolean } = {
       kind: 'select',
     }
 
-    const matching = () => rows.filter((r) => filters.every(([c, v]) => r[c] === v)).slice(0, limitN)
+    const matching = () => {
+      const hit = rows.filter((r) => filters.every(([c, v]) => r[c] === v))
+      if (orderBy) {
+        const { column, ascending } = orderBy
+        // Array.prototype.sort es estable: los empates conservan el orden de inserción.
+        hit.sort((a, b) => (a[column] < b[column] ? -1 : a[column] > b[column] ? 1 : 0) * (ascending ? 1 : -1))
+      }
+      return hit.slice(0, limitN)
+    }
     const duplicateOf = (row: Row) => {
       const keys = UNIQUE_KEYS[table]
       return keys ? rows.find((r) => keys.every((k) => r[k] === row[k])) : undefined
@@ -61,7 +70,9 @@ export function makeFakeDb(seed: Record<string, Row[]> = {}) {
     const builder: any = {
       select: () => builder,
       eq: (c: string, v: unknown) => (filters.push([c, v]), builder),
-      order: () => builder,
+      order: (column: string, o?: { ascending?: boolean }) => (
+        (orderBy = { column, ascending: o?.ascending ?? true }), builder
+      ),
       limit: (n: number) => ((limitN = n), builder),
       insert: (p: Row) => ((op = { kind: 'insert', payload: p }), builder),
       upsert: (p: Row, o?: { ignoreDuplicates?: boolean }) => (

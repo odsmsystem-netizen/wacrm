@@ -103,7 +103,17 @@ export async function sendMessengerText(
       if (err.code === GRAPH_INVALID_TOKEN) {
         // Sin esto cada envío siguiente fallaría igual y en silencio: se marca
         // la página como desconectada para que Ajustes lo muestre.
-        await db.from('messenger_config').update({ status: 'disconnected' }).eq('id', config.id)
+        const { error: discError } = await db
+          .from('messenger_config')
+          .update({ status: 'disconnected' })
+          .eq('id', config.id)
+        if (discError) {
+          // No se lanza: el agente igual debe recibir token_invalid.
+          console.error(
+            `[messenger/send] could not mark messenger_config ${config.id} as disconnected:`,
+            discError.message,
+          )
+        }
         throw new MessengerSendError(
           'token_invalid',
           'The page token is invalid or was revoked. Reconnect the page in Settings.',
@@ -128,18 +138,29 @@ export async function sendMessengerText(
     .select()
     .single()
   if (error || !row) {
+    console.error(
+      `[messenger/send] message ${mid} was delivered to Messenger but could not be saved:`,
+      error?.message ?? 'no row returned',
+    )
     throw new MessengerSendError(
       'db_error',
-      'Message sent to Meta but failed to save to DB',
+      'The message WAS delivered to Messenger but could not be saved in the inbox. Do NOT resend it.',
       500,
     )
   }
 
   const now = new Date().toISOString()
-  await db
+  const { error: convError } = await db
     .from('conversations')
     .update({ last_message_text: text, last_message_at: now, updated_at: now })
     .eq('id', conversationId)
+  if (convError) {
+    // El mensaje ya salió y quedó guardado; solo queda desfasada la vista previa.
+    console.error(
+      `[messenger/send] could not update last_message_* of conversation ${conversationId}:`,
+      convError.message,
+    )
+  }
 
   return { messageId: row.id as string, mid }
 }

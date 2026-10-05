@@ -20,6 +20,40 @@ vi.mock('./graph', () => ({
 const NOW = Date.parse('2026-10-06T12:00:00Z')
 const hoursAgo = (h: number) => new Date(NOW - h * 3600_000).toISOString()
 
+function seedMessages(msgs: Array<{ sender: 'customer' | 'agent'; hoursAgo: number }>) {
+  const db = seed({ lastInboundHoursAgo: null })
+  db.tables.messages.push(
+    ...msgs.map((m, i) => ({
+      id: `mm${i}`,
+      conversation_id: 'conv1',
+      sender_type: m.sender,
+      created_at: hoursAgo(m.hoursAgo),
+    })),
+  )
+  return db
+}
+
+/** Hace que una operación concreta sobre una tabla devuelva un error de la base. */
+function failOn(db: ReturnType<typeof seed>, table: string, op: 'insert' | 'update') {
+  const realFrom = db.from
+  db.from = ((t: string) => {
+    const b = realFrom(t)
+    if (t !== table) return b
+    const real = b[op]
+    b[op] = (...a: unknown[]) => {
+      real(...a)
+      const failing: Record<string, unknown> = {
+        eq: () => failing,
+        select: () => failing,
+        single: async () => ({ data: null, error: { message: 'boom' } }),
+        then: (resolve: (v: unknown) => unknown) => resolve({ data: null, error: { message: 'boom' } }),
+      }
+      return failing
+    }
+    return b
+  }) as typeof db.from
+}
+
 function seed(over: { lastInboundHoursAgo?: number | null; channel?: string } = {}) {
   const { lastInboundHoursAgo = 1, channel = 'messenger' } = over
   return makeFakeDb({
@@ -111,5 +145,66 @@ describe('sendMessengerText', () => {
       code: 'not_found',
       status: 404,
     })
+  })
+
+  it('la ventana se mide desde el ÚLTIMO mensaje del cliente (viejo insertado primero)', async () => {
+    const db = seedMessages([
+      { sender: 'customer', hoursAgo: 30 },
+      { sender: 'customer', hoursAgo: 1 },
+    ])
+    await expect(sendMessengerText(db as never, 'acct-1', params)).resolves.toMatchObject({ mid: 'm_sent' })
+  })
+
+  it('la ventana se mide desde el ÚLTIMO mensaje del cliente (reciente insertado primero)', async () => {
+    const db = seedMessages([
+      { sender: 'customer', hoursAgo: 1 },
+      { sender: 'customer', hoursAgo: 30 },
+    ])
+    await expect(sendMessengerText(db as never, 'acct-1', params)).resolves.toMatchObject({ mid: 'm_sent' })
+  })
+
+  it('un mensaje reciente del AGENTE no reabre la ventana', async () => {
+    const db = seedMessages([
+      { sender: 'customer', hoursAgo: 30 },
+      { sender: 'agent', hoursAgo: 1 },
+    ])
+    await expect(sendMessengerText(db as never, 'acct-1', params)).rejects.toMatchObject({
+      code: 'window_closed',
+    })
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('si falla actualizar la vista previa de la conversación, lo registra y sigue con éxito', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = seed()
+    failOn(db, 'conversations', 'update')
+    await expect(sendMessengerText(db as never, 'acct-1', params)).resolves.toMatchObject({ mid: 'm_sent' })
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('conv1'), expect.stringContaining('boom'))
+    spy.mockRestore()
+  })
+
+  it('si falla marcar la página como desconectada, lo registra y el agente sigue recibiendo token_invalid', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    sendText.mockRejectedValue(new FakeApiError('Token vencido', 400, 190))
+    const db = seed()
+    failOn(db, 'messenger_config', 'update')
+    await expect(sendMessengerText(db as never, 'acct-1', params)).rejects.toMatchObject({
+      code: 'token_invalid',
+    })
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('cfg-1'), expect.stringContaining('boom'))
+    spy.mockRestore()
+  })
+
+  it('si falla guardar el saliente tras enviarlo a Meta, registra el mid y avisa que NO se reenvíe', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = seed()
+    failOn(db, 'messages', 'insert')
+    const err = await sendMessengerText(db as never, 'acct-1', params).catch((e) => e)
+    expect(err).toBeInstanceOf(MessengerSendError)
+    expect(err).toMatchObject({ code: 'db_error', status: 500 })
+    expect(err.message).toMatch(/delivered/i)
+    expect(err.message).toMatch(/not resend|do not resend/i)
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('m_sent'), expect.stringContaining('boom'))
+    spy.mockRestore()
   })
 })
