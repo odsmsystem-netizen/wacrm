@@ -38,8 +38,15 @@ async function findOrCreateContact(
   const existing = await findContact(db, config.account_id, psid)
   if (existing) return existing
 
-  const name =
-    (await getUserName(decrypt(config.page_access_token), psid)) ?? `Messenger ····${psid.slice(-4)}`
+  // El nombre es opcional: un token revocado (página desconectada) o corrupto
+  // no debe costar el mensaje, así que cualquier fallo cae al nombre de respaldo.
+  let name: string | null = null
+  try {
+    name = await getUserName(decrypt(config.page_access_token), psid)
+  } catch (err) {
+    console.warn('[messenger] no se pudo consultar el nombre del cliente:', (err as Error).message)
+  }
+  name = name ?? `Messenger ····${psid.slice(-4)}`
 
   const { data, error } = await db
     .from('contacts')
@@ -110,11 +117,13 @@ export async function processInboundEvent(
     .from('messenger_config')
     .select('account_id, user_id, page_access_token')
     .eq('page_id', event.pageId)
-    .eq('status', 'connected')
     .maybeSingle()
 
+  // Sin filtrar por `status`: una página 'disconnected' (token revocado) sigue
+  // suscrita en Meta, que no reintenta; descartar aquí perdería mensajes. La
+  // entrada no necesita un token válido. `status` solo es candado del envío.
   if (!config) {
-    console.warn('[messenger] mensaje de una página no conectada:', event.pageId)
+    console.warn('[messenger] mensaje de una página desconocida:', event.pageId)
     return 'unknown_page'
   }
 

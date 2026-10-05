@@ -3,7 +3,12 @@ import { makeFakeDb } from './__fixtures__/fake-db'
 import { processInboundEvent } from './inbound'
 import type { MessengerInboundEvent } from './parse-webhook'
 
-vi.mock('@/lib/whatsapp/encryption', () => ({ decrypt: (s: string) => `dec(${s})` }))
+vi.mock('@/lib/whatsapp/encryption', () => ({
+  decrypt: (s: string) => {
+    if (s === 'corrupt') throw new Error('bad token')
+    return `dec(${s})`
+  },
+}))
 const getUserName = vi.fn()
 vi.mock('./graph', () => ({ getUserName: (...a: unknown[]) => getUserName(...a) }))
 
@@ -92,9 +97,32 @@ describe('processInboundEvent', () => {
     expect(db.tables.contacts ?? []).toHaveLength(0)
   })
 
-  it('una página desconectada no recibe mensajes', async () => {
+  it('una página desconectada SÍ guarda el mensaje del cliente', async () => {
     const db = makeFakeDb({ messenger_config: [{ ...CONFIG, status: 'disconnected' }] })
-    await expect(processInboundEvent(db as never, event())).resolves.toBe('unknown_page')
+    await expect(processInboundEvent(db as never, event())).resolves.toBe('stored')
+    expect(db.tables.contacts).toHaveLength(1)
+    expect(db.tables.messages).toHaveLength(1)
+    expect(db.tables.messages[0]).toMatchObject({ content_text: 'Hola', message_id: 'm_1' })
+  })
+
+  it('si getUserName falla con token revocado el mensaje se guarda con nombre de respaldo', async () => {
+    getUserName.mockResolvedValue(null)
+    const db = makeFakeDb({ messenger_config: [{ ...CONFIG, status: 'disconnected' }] })
+    await expect(processInboundEvent(db as never, event({ psid: 'PSID-4321' }))).resolves.toBe(
+      'stored',
+    )
+    expect(db.tables.contacts[0].name).toBe('Messenger ····4321')
+  })
+
+  it('si el token guardado no se puede descifrar el mensaje igual se guarda con nombre de respaldo', async () => {
+    const db = makeFakeDb({
+      messenger_config: [{ ...CONFIG, status: 'disconnected', page_access_token: 'corrupt' }],
+    })
+    await expect(processInboundEvent(db as never, event({ psid: 'PSID-7777' }))).resolves.toBe(
+      'stored',
+    )
+    expect(db.tables.contacts[0].name).toBe('Messenger ····7777')
+    expect(getUserName).not.toHaveBeenCalled()
   })
 
   it('un mensaje de imagen guarda la URL y el tipo', async () => {
