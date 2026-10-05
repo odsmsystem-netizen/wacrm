@@ -36,7 +36,13 @@ export function MessengerConfig() {
         setError(t('errorGeneric'));
         return;
       }
-      setStatus(await res.json());
+      const data: MessengerStatus = await res.json();
+      setStatus(data);
+      // Desconectada (hay fila pero el token dejó de servir): se precarga el ID
+      // de la página, sin pisar lo que el usuario ya haya escrito.
+      if (!data.connected && data.page_id) {
+        setPageId((current) => current || data.page_id!);
+      }
     } catch {
       setError(t('errorGeneric'));
     }
@@ -99,6 +105,15 @@ export function MessengerConfig() {
         {error && (
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             {error}
+          </div>
+        )}
+
+        {!status?.connected && status?.page_id && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+          >
+            {t('disconnectedNotice')}
           </div>
         )}
 

@@ -1256,7 +1256,8 @@
       "verifyToken": "Verify token",
       "setupHint": "In the Meta app, add the Messenger product, subscribe the page to the \"messages\" field, and paste the webhook URL and verify token above.",
       "tokenHidden": "The token is stored encrypted and is never shown again.",
-      "errorGeneric": "Could not connect the page."
+      "errorGeneric": "Could not connect the page.",
+      "disconnectedNotice": "The page token stopped working. Reconnect the page to keep sending replies."
     },
     "pageTitle": "Settings",
     "pageDesc": "Everything in one place — your account and your workspace. Pick a section to manage it.",
