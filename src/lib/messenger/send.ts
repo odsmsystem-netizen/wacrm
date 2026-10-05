@@ -37,6 +37,12 @@ export async function sendMessengerText(
   db: SupabaseClient,
   accountId: string,
   params: { conversationId: string; text: string },
+  /**
+   * Cliente de servicio, SOLO para marcar la página como desconectada: la RLS
+   * de messenger_config exige rol de administrador y para un agente el UPDATE
+   * afectaría 0 filas sin error. Nunca se usa para leer ni para insertar.
+   */
+  adminDb?: SupabaseClient,
 ): Promise<{ messageId: string; mid: string }> {
   const { conversationId, text } = params
 
@@ -103,10 +109,13 @@ export async function sendMessengerText(
       if (err.code === GRAPH_INVALID_TOKEN) {
         // Sin esto cada envío siguiente fallaría igual y en silencio: se marca
         // la página como desconectada para que Ajustes lo muestre.
-        const { error: discError } = await db
+        // El config ya se leyó con el cliente (y la RLS) del usuario; el UPDATE
+        // va acotado por id Y cuenta.
+        const { error: discError } = await (adminDb ?? db)
           .from('messenger_config')
           .update({ status: 'disconnected' })
           .eq('id', config.id)
+          .eq('account_id', accountId)
         if (discError) {
           // No se lanza: el agente igual debe recibir token_invalid.
           console.error(

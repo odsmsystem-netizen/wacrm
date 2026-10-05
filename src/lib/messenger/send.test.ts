@@ -122,6 +122,54 @@ describe('sendMessengerText', () => {
     expect(db.tables.messages.filter((m) => m.sender_type === 'agent')).toHaveLength(0)
   })
 
+  it('Review Focus 5 con RLS: si el db del usuario no puede actualizar, adminDb marca la página como desconectada', async () => {
+    sendText.mockRejectedValue(new FakeApiError('Token vencido', 400, 190))
+    const db = seed()
+    // Simula la RLS de un agente: el UPDATE no da error pero afecta 0 filas.
+    const realFrom = db.from
+    db.from = ((t: string) => {
+      const b = realFrom(t)
+      if (t !== 'messenger_config') return b
+      const noop: Record<string, unknown> = {
+        eq: () => noop,
+        then: (resolve: (v: unknown) => unknown) => resolve({ data: null, error: null }),
+      }
+      b.update = () => noop
+      return b
+    }) as typeof db.from
+    const adminDb = seed()
+    const eqs: Array<[string, unknown]> = []
+    const adminFrom = adminDb.from
+    adminDb.from = ((t: string) => {
+      const b = adminFrom(t)
+      if (t !== 'messenger_config') throw new Error(`adminDb solo puede tocar messenger_config, no ${t}`)
+      const realUpdate = b.update
+      b.update = (...a: unknown[]) => {
+        const q = realUpdate(...a)
+        const realEq = q.eq
+        q.eq = (col: string, val: unknown) => {
+          eqs.push([col, val])
+          return realEq(col, val)
+        }
+        return q
+      }
+      return b
+    }) as typeof adminDb.from
+
+    await expect(
+      sendMessengerText(db as never, 'acct-1', params, adminDb as never),
+    ).rejects.toMatchObject({ code: 'token_invalid', status: 401 })
+
+    expect(db.tables.messenger_config[0].status).toBe('connected')
+    expect(adminDb.tables.messenger_config[0].status).toBe('disconnected')
+    expect(eqs).toEqual(
+      expect.arrayContaining([
+        ['id', 'cfg-1'],
+        ['account_id', 'acct-1'],
+      ]),
+    )
+  })
+
   it('otro error de Meta se reporta sin desconectar nada', async () => {
     sendText.mockRejectedValue(new FakeApiError('Rate limit', 429, 4))
     const db = seed()
