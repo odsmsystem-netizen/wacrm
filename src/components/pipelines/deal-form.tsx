@@ -1,5 +1,6 @@
 "use client";
 
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -279,7 +280,7 @@ export function DealForm({
                 <option value="">{t("selectContact")}</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name || c.phone}
+                    {contactDisplayName(c)}
                   </option>
                 ))}
               </select>

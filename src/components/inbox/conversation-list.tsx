@@ -1,5 +1,6 @@
 "use client";
 
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -437,7 +438,7 @@ function ConversationItem({
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
-  const displayName = contact?.name || contact?.phone || t("unknown");
+  const displayName = contactDisplayName(contact, t("unknown"));
   const initials = displayName.charAt(0).toUpperCase();
 
   const handleClick = useCallback(() => {

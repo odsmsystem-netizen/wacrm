@@ -1,5 +1,6 @@
 'use client';
 
+import { contactDisplayName } from '@/lib/contacts/display-name';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -597,14 +598,14 @@ export default function ContactsPage() {
                     <Checkbox
                       checked={selected.has(contact.id)}
                       onCheckedChange={() => toggleSelect(contact.id)}
-                      aria-label={`Select ${contact.name || contact.phone}`}
+                      aria-label={`Select ${contactDisplayName(contact)}`}
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
                     {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">
-                    {contact.phone}
+                    {contact.phone ?? '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden md:table-cell text-sm">
                     {contact.email || <span className="text-muted-foreground">-</span>}
@@ -774,7 +775,7 @@ export default function ContactsPage() {
           <DialogHeader>
             <DialogTitle className="text-popover-foreground">{t('deleteContactTitle')}</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {t('deleteContactDesc', { name: deleteTarget?.name || deleteTarget?.phone || '' })}
+              {t('deleteContactDesc', { name: contactDisplayName(deleteTarget) })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="bg-popover border-border">
