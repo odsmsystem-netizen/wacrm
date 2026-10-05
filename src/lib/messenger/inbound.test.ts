@@ -109,4 +109,34 @@ describe('processInboundEvent', () => {
     })
     expect(db.rpcCalls[0].args.p_last_message_text).toBe('[image]')
   })
+  function failingOn(db: ReturnType<typeof makeFakeDb>, table: string) {
+    const realFrom = db.from
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const failing: any = {
+      select: () => failing,
+      eq: () => failing,
+      order: () => failing,
+      limit: () => failing,
+      maybeSingle: async () => ({ data: null, error: null }),
+      insert: () => failing,
+      upsert: () => failing,
+      single: async () => ({ data: null, error: { message: 'boom' } }),
+      then: (resolve: (v: unknown) => unknown) => resolve({ data: null, error: { message: 'boom' } }),
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(db as any).from = (t: string) => (t === table ? failing : realFrom(t))
+  }
+
+  it('un error real al guardar el mensaje lanza y no se reporta como duplicate', async () => {
+    const db = makeFakeDb({ messenger_config: [CONFIG] })
+    failingOn(db, 'messages')
+    await expect(processInboundEvent(db as never, event({ mid: 'm_err' }))).rejects.toThrow(/m_err/)
+    expect(db.rpcCalls).toHaveLength(0)
+  })
+
+  it('si falla crear la conversación lanza y no se reporta unknown_page', async () => {
+    const db = makeFakeDb({ messenger_config: [CONFIG] })
+    failingOn(db, 'conversations')
+    await expect(processInboundEvent(db as never, event())).rejects.toThrow(/conversaci/)
+  })
 })

@@ -119,9 +119,11 @@ export async function processInboundEvent(
   }
 
   const contact = await findOrCreateContact(db, config, event.psid)
-  if (!contact) return 'unknown_page'
+  if (!contact) throw new Error(`[messenger] no se pudo crear el contacto del PSID ${event.psid}`)
   const conversation = await findOrCreateConversation(db, config, contact.id)
-  if (!conversation) return 'unknown_page'
+  if (!conversation) {
+    throw new Error(`[messenger] no se pudo crear la conversación del contacto ${contact.id}`)
+  }
 
   // Idempotencia: Meta reintenta entregas lentas con el mismo `mid`. El índice
   // único (conversation_id, message_id) convierte el reintento en un
@@ -147,7 +149,9 @@ export async function processInboundEvent(
 
   if (error) {
     console.error('[messenger] error guardando mensaje:', error)
-    return 'duplicate'
+    // Un fallo real no es un reintento inofensivo: se propaga para que el
+    // llamador lo registre en vez de perder el mensaje en silencio.
+    throw new Error(`[messenger] no se pudo guardar el mensaje ${event.mid}: ${error.message}`)
   }
   if (!inserted || inserted.length === 0) return 'duplicate'
 
