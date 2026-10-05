@@ -474,8 +474,15 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {displayName}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+            {conversation.channel === "messenger" && (
+              <span className="shrink-0 rounded bg-blue-500/15 px-1 text-[9px] font-semibold uppercase text-blue-400">
+                Messenger
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>

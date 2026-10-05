@@ -485,16 +485,24 @@ export function MessageThread({
       setReplyTo(null);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conversation_id: conversation.id,
-            message_type: "text",
-            content_text: text,
-            reply_to_message_id: replyToId,
-          }),
-        });
+        const isMessenger = conversation.channel === "messenger";
+        const res = await fetch(
+          isMessenger ? "/api/messenger/send" : "/api/whatsapp/send",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              isMessenger
+                ? { conversation_id: conversation.id, content_text: text }
+                : {
+                    conversation_id: conversation.id,
+                    message_type: "text",
+                    content_text: text,
+                    reply_to_message_id: replyToId,
+                  },
+            ),
+          },
+        );
 
         const payload = await res.json().catch(() => ({}));
 
@@ -1183,6 +1191,7 @@ export function MessageThread({
         onOpenTemplates={handleOpenTemplates}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}
+        textOnly={conversation.channel === "messenger"}
       />
 
       <TemplatePicker
