@@ -34,6 +34,9 @@ export function extractInboundEvents(body: unknown): MessengerInboundEvent[] {
     if (!entry?.id || !Array.isArray(entry.messaging)) continue
 
     for (const rawItem of entry.messaging) {
+      // Skip items that are not non-null objects
+      if (typeof rawItem !== 'object' || !rawItem) continue
+
       const item = rawItem as {
         sender?: { id?: string }
         timestamp?: number
@@ -50,8 +53,10 @@ export function extractInboundEvents(body: unknown): MessengerInboundEvent[] {
       // mensaje del cliente. `is_echo` es lo que la propia página mandó.
       if (!message || !psid || !message.mid || message.is_echo) continue
 
-      const image = message.attachments?.find((a) => a.type === 'image' && a.payload?.url)
-      const other = message.attachments?.[0]
+      const image =
+        Array.isArray(message.attachments) &&
+        message.attachments.find((a) => a?.type === 'image' && a?.payload?.url)
+      const other = Array.isArray(message.attachments) ? message.attachments[0] : undefined
 
       let contentType: 'text' | 'image' = 'text'
       let contentText: string | null = message.text ?? null

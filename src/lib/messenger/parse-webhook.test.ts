@@ -71,4 +71,55 @@ describe('extractInboundEvents', () => {
       'B:m_3',
     ])
   })
+
+  it('skippea un null element inside messaging y procesa el mensaje válido hermano', () => {
+    const body = {
+      object: 'page',
+      entry: [
+        {
+          id: 'PAGE1',
+          messaging: [null, msg({ text: 'válido' })],
+        },
+      ],
+    }
+    const result = extractInboundEvents(body as unknown)
+    expect(result).toHaveLength(1)
+    expect(result[0]?.contentText).toBe('válido')
+  })
+
+  it('maneja attachments como objeto no-array sin lanzar error y procesa como texto', () => {
+    const body = {
+      object: 'page',
+      entry: [
+        {
+          id: 'PAGE1',
+          messaging: [
+            msg({ attachments: { type: 'image', payload: { url: 'x' } } as unknown }),
+            msg({ mid: 'm_2', text: 'válido' }),
+          ],
+        },
+      ],
+    }
+    const result = extractInboundEvents(body as unknown)
+    expect(result).toHaveLength(2)
+    expect(result[0]?.contentType).toBe('text')
+    expect(result[0]?.contentText).toBeNull()
+    expect(result[1]?.mid).toBe('m_2')
+  })
+
+  it('skippea null inside attachments array y procesa correctamente la imagen válida', () => {
+    const body = {
+      object: 'page',
+      entry: [
+        {
+          id: 'PAGE1',
+          messaging: [msg({ attachments: [null, { type: 'image', payload: { url: 'https://x.jpg' } }] as unknown })],
+        },
+      ],
+    }
+    const result = extractInboundEvents(body as unknown)
+    expect(result).toHaveLength(1)
+    expect(result[0]?.contentType).toBe('image')
+    expect(result[0]?.mediaUrl).toBe('https://x.jpg')
+  })
 })
