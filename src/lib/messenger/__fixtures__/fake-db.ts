@@ -8,6 +8,7 @@ type Row = Record<string, any>
 const UNIQUE_KEYS: Record<string, string[]> = {
   contacts: ['account_id', 'channel', 'external_id'],
   messages: ['conversation_id', 'message_id'],
+  messenger_config: ['account_id'],
 }
 
 export function makeFakeDb(seed: Record<string, Row[]> = {}) {
@@ -19,7 +20,7 @@ export function makeFakeDb(seed: Record<string, Row[]> = {}) {
     const rows = (tables[table] ??= [])
     const filters: Array<[string, unknown]> = []
     let limitN = Infinity
-    let op: { kind: 'select' | 'insert' | 'upsert' | 'update'; payload?: Row; ignore?: boolean } = {
+    let op: { kind: 'select' | 'insert' | 'upsert' | 'update' | 'delete'; payload?: Row; ignore?: boolean } = {
       kind: 'select',
     }
 
@@ -32,12 +33,22 @@ export function makeFakeDb(seed: Record<string, Row[]> = {}) {
     const run = (): { data: Row[] | null; error: { code?: string; message: string } | null } => {
       if (op.kind === 'insert' || op.kind === 'upsert') {
         const row = { id: `${table}-${++idSeq}`, created_at: new Date().toISOString(), ...op.payload }
-        if (duplicateOf(row)) {
+        const dup = duplicateOf(row)
+        if (dup) {
           if (op.kind === 'upsert' && op.ignore) return { data: [], error: null }
+          if (op.kind === 'upsert') {
+            Object.assign(dup, op.payload)
+            return { data: [dup], error: null }
+          }
           return { data: null, error: { code: '23505', message: 'duplicate key value' } }
         }
         rows.push(row)
         return { data: [row], error: null }
+      }
+      if (op.kind === 'delete') {
+        const hit = matching()
+        hit.forEach((r) => rows.splice(rows.indexOf(r), 1))
+        return { data: hit, error: null }
       }
       if (op.kind === 'update') {
         const hit = matching()
@@ -56,6 +67,7 @@ export function makeFakeDb(seed: Record<string, Row[]> = {}) {
       upsert: (p: Row, o?: { ignoreDuplicates?: boolean }) => (
         (op = { kind: 'upsert', payload: p, ignore: o?.ignoreDuplicates }), builder
       ),
+      delete: () => ((op = { kind: 'delete' }), builder),
       update: (p: Row) => ((op = { kind: 'update', payload: p }), builder),
       maybeSingle: async () => {
         const r = run()

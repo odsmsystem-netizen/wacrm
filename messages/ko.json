@@ -1242,6 +1242,22 @@
     }
   },
   "Settings": {
+    "messenger": {
+      "title": "Messenger",
+      "description": "Receive and answer Facebook Messenger messages from the company page in the inbox.",
+      "notConnected": "Not connected",
+      "connectedTo": "Connected to {name}",
+      "pageId": "Page ID",
+      "pageToken": "Page access token",
+      "connect": "Connect page",
+      "saving": "Connecting...",
+      "disconnect": "Disconnect",
+      "webhookUrl": "Webhook URL",
+      "verifyToken": "Verify token",
+      "setupHint": "In the Meta app, add the Messenger product, subscribe the page to the \"messages\" field, and paste the webhook URL and verify token above.",
+      "tokenHidden": "The token is stored encrypted and is never shown again.",
+      "errorGeneric": "Could not connect the page."
+    },
     "pageTitle": "설정",
     "pageDesc": "계정과 워크스페이스에 관한 모든 것을 한곳에서 관리하세요. 관리할 섹션을 선택하세요.",
     "overview": {

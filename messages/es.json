@@ -1242,6 +1242,22 @@
     }
   },
   "Settings": {
+    "messenger": {
+      "title": "Messenger",
+      "description": "Recibe y responde en la bandeja los mensajes de Facebook Messenger de la página de la empresa.",
+      "notConnected": "Sin conectar",
+      "connectedTo": "Conectado a {name}",
+      "pageId": "ID de la página",
+      "pageToken": "Token de acceso de la página",
+      "connect": "Conectar página",
+      "saving": "Conectando...",
+      "disconnect": "Desconectar",
+      "webhookUrl": "URL del webhook",
+      "verifyToken": "Token de verificación",
+      "setupHint": "En la app de Meta agrega el producto Messenger, suscribe la página al campo \"messages\" y pega arriba la URL del webhook y el token de verificación.",
+      "tokenHidden": "El token se guarda cifrado y no se vuelve a mostrar.",
+      "errorGeneric": "No se pudo conectar la página."
+    },
     "pageTitle": "Configuración",
     "pageDesc": "Todo en un solo lugar: tu cuenta y tu espacio de trabajo. Elige una sección para gestionarla.",
     "overview": {
