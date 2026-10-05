@@ -233,6 +233,18 @@ export async function sendMessageToConversation(
     throw new SendMessageError('not_found', 'Conversation not found', 404);
   }
 
+  // Messenger tiene su propio camino de envío (ventana de 24 h, token de
+  // página). Se corta aquí, antes de mirar el teléfono: un contacto de
+  // Messenger no tiene, y "Contact phone number not found" mandaría a quien
+  // llama a buscar un problema que no existe.
+  if (conversation.channel === 'messenger') {
+    throw new SendMessageError(
+      'bad_request',
+      'This conversation is on Messenger; send through /api/messenger/send',
+      400
+    );
+  }
+
   const contact = conversation.contact;
   if (!contact?.phone) {
     throw new SendMessageError(
