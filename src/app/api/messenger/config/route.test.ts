@@ -57,6 +57,26 @@ describe('/api/messenger/config', () => {
     expect(await res.json()).not.toHaveProperty('connected')
   })
 
+  it('POST responde 500 y no escribe nada si falla la lectura previa del verify_token', async () => {
+    const realFrom = db.from
+    db.from = ((table: string) =>
+      table === 'messenger_config'
+        ? {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: null, error: { message: 'boom' } }),
+              }),
+            }),
+          }
+        : realFrom(table)) as typeof db.from
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))
+    spy.mockRestore()
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: 'No se pudo leer la configuración' })
+    expect(db.tables.messenger_config ?? []).toHaveLength(0)
+  })
+
   it('POST valida el token contra Meta, lo guarda cifrado y genera el verify_token', async () => {
     const res = await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))
     expect(res.status).toBe(200)

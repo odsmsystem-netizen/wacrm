@@ -257,6 +257,18 @@ describe('POST /api/whatsapp/send — contact_id template path', () => {
     expect(sendTemplateMessage).not.toHaveBeenCalled()
   })
 
+  it('400s for a Messenger contact and creates no conversation', async () => {
+    contactRow = { ...CONTACT, channel: 'messenger' }
+
+    const res = await postContactTemplate()
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/messenger/i)
+    expect(conversationInserts).toHaveLength(0)
+    expect(sendTemplateMessage).not.toHaveBeenCalled()
+  })
+
   it('400s when neither conversation_id nor contact_id is provided', async () => {
     const res = await POST(
       new Request('http://localhost/api/whatsapp/send', {

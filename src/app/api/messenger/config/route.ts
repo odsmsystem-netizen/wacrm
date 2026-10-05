@@ -72,11 +72,16 @@ export async function POST(request: Request) {
 
     // Reconectar conserva el verify_token: Meta ya lo tiene guardado en su
     // panel y cambiarlo rompería la suscripción sin avisar.
-    const { data: existing } = await supabase
+    const { data: existing, error: readError } = await supabase
       .from('messenger_config')
       .select('verify_token')
       .eq('account_id', accountId)
       .maybeSingle()
+    if (readError) {
+      // Generar un token nuevo en silencio rompería la suscripción en Meta.
+      console.error('[messenger/config] error leyendo verify_token:', readError)
+      return NextResponse.json({ error: 'No se pudo leer la configuración' }, { status: 500 })
+    }
     const verifyToken = existing?.verify_token ?? randomBytes(16).toString('hex')
 
     const { error } = await supabase.from('messenger_config').upsert(
