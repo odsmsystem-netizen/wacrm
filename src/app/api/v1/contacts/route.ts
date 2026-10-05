@@ -24,6 +24,7 @@ import {
   resolveAuditUserId,
   ContactError,
 } from '@/lib/api/v1/contacts';
+import { parseChannelParam } from '@/lib/api/v1/channel';
 
 // PostgREST filter values are comma/paren-delimited; strip anything
 // that could break the `.or()` grammar before interpolating a search
@@ -39,6 +40,8 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const search = sanitizeSearch(url.searchParams.get('search') ?? '');
     const tag = url.searchParams.get('tag');
+    const parsedChannel = parseChannelParam(url.searchParams.get('channel'));
+    if ('error' in parsedChannel) return fail('bad_request', parsedChannel.error, 400);
 
     // When filtering by tag, add an aliased INNER join on contact_tags
     // used purely for the WHERE — the parent is kept only if it has the
@@ -53,7 +56,8 @@ export async function GET(request: Request) {
     let query = ctx.supabase
       .from('contacts')
       .select(selectClause)
-      .eq('account_id', ctx.accountId);
+      .eq('account_id', ctx.accountId)
+      .eq('channel', parsedChannel.channel);
 
     if (search) {
       query = query.or(`name.ilike.*${search}*,phone.ilike.*${search}*`);

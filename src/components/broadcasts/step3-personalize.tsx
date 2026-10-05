@@ -1,5 +1,6 @@
 'use client';
 
+import { contactDisplayName } from '@/lib/contacts/display-name';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Contact, CustomField, MessageTemplate } from '@/types';
@@ -96,6 +97,7 @@ export function Step3Personalize({
         supabase
           .from('contacts')
           .select('*')
+          .eq('channel', 'whatsapp')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -230,7 +232,7 @@ export function Step3Personalize({
   ]);
 
   const previewLabel = firstContact
-    ? firstContact.name || firstContact.phone
+    ? contactDisplayName(firstContact)
     : t('personalize.previewSample');
 
   return (

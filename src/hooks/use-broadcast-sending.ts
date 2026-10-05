@@ -168,7 +168,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     let contacts: Contact[] = [];
 
     if (audience.type === 'all') {
-      const { data, error } = await supabase.from('contacts').select('*');
+      const { data, error } = await supabase.from('contacts').select('*').eq('channel', 'whatsapp');
       if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
       contacts = data ?? [];
     } else if (
@@ -191,6 +191,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
         const { data, error } = await supabase
           .from('contacts')
           .select('*')
+          .eq('channel', 'whatsapp')
           .in('id', uniqueContactIds);
         if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
         contacts = data ?? [];
@@ -266,6 +267,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
       .from('contacts')
       .select('*')
       .eq('account_id', accountId)
+      .eq('channel', 'whatsapp')
       .in('phone_normalized', keys);
     if (lookupErr) {
       throw new Error(`Failed to look up CSV contacts: ${lookupErr.message}`);
@@ -339,6 +341,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     const { data, error } = await supabase
       .from('contacts')
       .select('*')
+      .eq('channel', 'whatsapp')
       .in('id', contactIds);
     if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
     return data ?? [];

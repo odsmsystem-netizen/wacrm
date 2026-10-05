@@ -33,6 +33,7 @@ import {
   normalizeConversation,
 } from '@/lib/inbox/conversations';
 import { serializeConversation } from '@/lib/api/v1/conversations';
+import { parseChannelParam } from '@/lib/api/v1/channel';
 import type { Conversation } from '@/types';
 
 export async function GET(request: Request) {
@@ -42,11 +43,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const contactId = url.searchParams.get('contact_id');
+    const parsedChannel = parseChannelParam(url.searchParams.get('channel'));
+    if ('error' in parsedChannel) return fail('bad_request', parsedChannel.error, 400);
 
     let query = ctx.supabase
       .from('conversations')
       .select(CONVERSATION_SELECT)
-      .eq('account_id', ctx.accountId);
+      .eq('account_id', ctx.accountId)
+      .eq('channel', parsedChannel.channel);
 
     if (status) query = query.eq('status', status);
     if (contactId) query = query.eq('contact_id', contactId);
