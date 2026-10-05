@@ -30,9 +30,17 @@ export function MessengerConfig() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/messenger/config');
-    if (res.ok) setStatus(await res.json());
-  }, []);
+    try {
+      const res = await fetch('/api/messenger/config');
+      if (!res.ok) {
+        setError(t('errorGeneric'));
+        return;
+      }
+      setStatus(await res.json());
+    } catch {
+      setError(t('errorGeneric'));
+    }
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -55,15 +63,26 @@ export function MessengerConfig() {
       }
       setStatus(body);
       setToken('');
+    } catch {
+      setError(t('errorGeneric'));
     } finally {
       setSaving(false);
     }
   }
 
   async function disconnect() {
-    await fetch('/api/messenger/config', { method: 'DELETE' });
-    setPageId('');
-    await load();
+    setError(null);
+    try {
+      const res = await fetch('/api/messenger/config', { method: 'DELETE' });
+      if (!res.ok) {
+        setError(t('errorGeneric'));
+        return;
+      }
+      setPageId('');
+      await load();
+    } catch {
+      setError(t('errorGeneric'));
+    }
   }
 
   return (

@@ -15,11 +15,15 @@ const webhookUrl = (request: Request) => `${requestOrigin(request)}/api/messenge
 export async function GET(request: Request) {
   try {
     const { supabase, accountId } = await requireRole('admin')
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messenger_config')
       .select('page_id, page_name, verify_token, status')
       .eq('account_id', accountId)
       .maybeSingle()
+    if (error) {
+      console.error('[messenger/config] error leyendo:', error)
+      return NextResponse.json({ error: 'No se pudo leer la configuración' }, { status: 500 })
+    }
 
     if (!data) return NextResponse.json({ connected: false, webhook_url: webhookUrl(request) })
     return NextResponse.json({
