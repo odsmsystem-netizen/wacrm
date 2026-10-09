@@ -34,6 +34,13 @@ function isHttps(url: string | null | undefined): url is string {
   return typeof url === "string" && url.startsWith("https://");
 }
 
+// `captured_at` viene de una columna JSONB: si alguna vez llegara corrupto, `format` lanzaría
+// RangeError y tumbaría la barra lateral entera. Mejor no mostrar la fecha que romper la bandeja.
+function formatCapturedAt(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : format(d, "MMM d, yyyy HH:mm");
+}
+
 function OriginCard({ referral }: { referral: AdReferral }) {
   const t = useTranslations("Inbox.sidebar");
   const [imgFailed, setImgFailed] = useState(false);
@@ -77,7 +84,7 @@ function OriginCard({ referral }: { referral: AdReferral }) {
         </p>
       )}
       <p className="text-[10px] text-muted-foreground/70">
-        {format(new Date(referral.captured_at), "MMM d, yyyy HH:mm")}
+        {formatCapturedAt(referral.captured_at)}
       </p>
     </div>
   );
@@ -236,7 +243,14 @@ export function ContactSidebar({ contact, adReferral }: ContactSidebarProps) {
             )}
           </div>
 
-          {adReferral && <OriginCard referral={adReferral} />}
+          {adReferral && (
+            // key: sin ella React reutiliza la tarjeta al cambiar de conversación y, si la
+            // imagen de la anterior falló, la miniatura de la nueva quedaría oculta.
+            <OriginCard
+              key={`${adReferral.source_id ?? ''}|${adReferral.captured_at}`}
+              referral={adReferral}
+            />
+          )}
 
           {/* Divider */}
           <div className="my-4 border-t border-border" />
