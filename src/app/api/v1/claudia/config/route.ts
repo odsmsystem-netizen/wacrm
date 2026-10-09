@@ -1,4 +1,4 @@
-import { ok, toApiErrorResponse } from '@/lib/api/v1/respond';
+import { fail, ok, toApiErrorResponse } from '@/lib/api/v1/respond';
 import { requireApiKey } from '@/lib/auth/api-context';
 import {
   construirBloquePrompt,
@@ -100,15 +100,12 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (cfgErr) {
       console.error('[v1/claudia/config] error leyendo config:', cfgErr);
-      // `activa: true` también en el error: si el CRM no puede leer su
-      // propia configuración, la conducta segura es que Claudia siga
-      // atendiendo clientes, no que enmudezca por un fallo de base de datos.
-      return ok({
-        revision: 0,
-        sin_cambios: true,
-        activa: true,
-        promociones: PROMOCIONES_APAGADAS,
-      });
+      // NO se afirma nada sobre `activa` aquí. Antes se respondía `activa: true` «para que Claudia
+      // siga atendiendo», pero el agente toma ese valor por verdad: un fallo pasajero de la base de
+      // datos ENCENDÍA a Claudia aunque el usuario la hubiera apagado desde el punto de la barra
+      // superior (el usuario es quien decide). Con un 503 el agente registra el fallo, conserva el
+      // último estado conocido y reintenta en la siguiente vuelta.
+      return fail('unavailable', 'No se pudo leer la configuración de Claudia', 503);
     }
 
     // Sin fila de configuración no hay nada que aplicar. Se responde

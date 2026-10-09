@@ -112,14 +112,20 @@ describe('GET /api/v1/claudia/config — promociones', () => {
     });
   });
 
-  it('si no se puede leer la configuración, también manda promociones apagadas', async () => {
+  it('si no se puede leer la configuración responde 503 y NO afirma que Claudia esté encendida', async () => {
+    // Regla del producto: el interruptor general lo decide el usuario. Un fallo pasajero de la
+    // base de datos no puede encender a Claudia (antes respondía `activa: true`, y el agente lo
+    // tomaba por verdad hasta la siguiente vuelta). Con un 503 el agente conserva el último
+    // estado conocido, que es lo que ya hace ante cualquier respuesta que no sea 200.
     mocks.cfg.current = null;
     mocks.cfgError.current = { message: 'boom' };
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { data } = await (await llamar()).json();
+    const res = await llamar();
     err.mockRestore();
-    expect(data.activa).toBe(true);
-    expect(data.promociones.activas).toBe(false);
+    expect(res.status).toBe(503);
+    const cuerpo = await res.json();
+    expect(JSON.stringify(cuerpo)).not.toContain('"activa"');
+    expect(cuerpo.data).toBeUndefined();
   });
 
   it('si fallan las imágenes manda el bloque apagado en vez de uno incompleto', async () => {
