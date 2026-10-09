@@ -32,6 +32,8 @@ import {
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { OriginBadge } from "@/components/inbox/origin-badge";
+import { conversationOrigin } from "@/lib/inbox/conversation-origin";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -932,6 +934,11 @@ export function MessageThread({
             <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">{contact.phone}</p>
           </div>
+          {/* Origen: canal y, en WhatsApp, si llegó por anuncio u orgánico. Oculto en pantallas
+              angostas, igual que el temporizador; ahí queda la insignia de la lista. */}
+          <span className="ml-1 hidden sm:ml-2 sm:inline-flex">
+            <OriginBadge origin={conversationOrigin(conversation)} variant="chip" />
+          </span>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
           <Badge

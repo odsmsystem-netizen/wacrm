@@ -148,13 +148,21 @@
     }
   },
   "Inbox": {
+    "origin": {
+      "messenger": "Messenger",
+      "whatsapp_ad": "Anuncio",
+      "whatsapp_post": "Publicación",
+      "whatsapp_organic": "Orgánico",
+      "messengerFull": "Messenger",
+      "whatsapp_adFull": "WhatsApp por anuncio",
+      "whatsapp_postFull": "WhatsApp por publicación",
+      "whatsapp_organicFull": "WhatsApp orgánico"
+    },
     "page": {
       "whatsappNotConnected": "WhatsApp® no está conectado. Ve a Configuración para conectar tu cuenta."
     },
     "conversationList": {
       "searchPlaceholder": "Buscar conversaciones...",
-      "adBadge": "Anuncio",
-      "postBadge": "Publicación",
       "filterAll": "Todas",
       "filterUnread": "Sin leer",
       "filterOpen": "Abiertas",
