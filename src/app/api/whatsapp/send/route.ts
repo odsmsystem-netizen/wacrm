@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       // caller can't open a conversation against someone else's contact.
       const { data: contactRow, error: contactErr } = await supabase
         .from('contacts')
-        .select('id')
+        .select('id, channel')
         .eq('id', contact_id)
         .eq('account_id', accountId)
         .maybeSingle()
@@ -123,6 +123,16 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: 'Contact not found' },
           { status: 404 }
+        )
+      }
+
+      // A Messenger contact has no phone; opening a conversation here would
+      // create one on the whatsapp channel that later Messenger inbound
+      // would land in.
+      if (contactRow.channel === 'messenger') {
+        return NextResponse.json(
+          { error: 'This contact is on Messenger; send through /api/messenger/send' },
+          { status: 400 }
         )
       }
 

@@ -110,7 +110,7 @@ export function ContactDetailView({
     if (data) {
       setContact(data);
       setEditName(data.name ?? '');
-      setEditPhone(data.phone);
+      setEditPhone(data.phone ?? '');
       setEditEmail(data.email ?? '');
       setEditCompany(data.company ?? '');
     }
@@ -191,14 +191,15 @@ export function ContactDetailView({
   }, [open, contactId, fetchContact, fetchTags, fetchNotes, fetchCustomFields, fetchDeals]);
 
   async function copyPhone() {
-    if (!contact) return;
+    if (!contact?.phone) return;
     await navigator.clipboard.writeText(contact.phone);
     setCopiedPhone(true);
     setTimeout(() => setCopiedPhone(false), 2000);
   }
 
   async function saveDetails() {
-    if (!contactId || !editPhone.trim()) {
+    const isMessenger = contact?.channel === 'messenger';
+    if (!contactId || (!isMessenger && !editPhone.trim())) {
       toast.error(t('toastPhoneRequired'));
       return;
     }
@@ -208,7 +209,8 @@ export function ContactDetailView({
       .from('contacts')
       .update({
         name: editName.trim() || null,
-        phone: editPhone.trim(),
+        // Un contacto de Messenger no tiene teléfono: este formulario nunca se lo escribe.
+        ...(isMessenger ? {} : { phone: editPhone.trim() }),
         email: editEmail.trim() || null,
         company: editCompany.trim() || null,
         updated_at: new Date().toISOString(),
@@ -410,7 +412,7 @@ export function ContactDetailView({
                       className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
                     >
                       <Phone className="size-3" />
-                      {contact.phone}
+                      {contact.phone ?? '-'}
                       {copiedPhone ? (
                         <Check className="size-3 text-primary" />
                       ) : (

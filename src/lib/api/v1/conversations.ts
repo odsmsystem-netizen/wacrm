@@ -13,6 +13,7 @@ import type { Conversation, Message } from '@/types';
 export interface ApiConversation {
   id: string;
   contact_id: string;
+  channel: 'whatsapp' | 'messenger';
   status: string;
   assigned_agent_id: string | null;
   /**
@@ -31,7 +32,7 @@ export interface ApiConversation {
   updated_at: string;
   contact: {
     id: string;
-    phone: string;
+    phone: string | null;
     name: string | null;
     email: string | null;
     company: string | null;
@@ -64,6 +65,7 @@ export function serializeConversation(conv: Conversation): ApiConversation {
   return {
     id: conv.id,
     contact_id: conv.contact_id,
+    channel: conv.channel ?? 'whatsapp',
     status: conv.status,
     assigned_agent_id: conv.assigned_agent_id ?? null,
     ai_autoreply_disabled: conv.ai_autoreply_disabled ?? false,

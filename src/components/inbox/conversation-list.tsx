@@ -1,5 +1,6 @@
 "use client";
 
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -437,7 +438,7 @@ function ConversationItem({
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
-  const displayName = contact?.name || contact?.phone || t("unknown");
+  const displayName = contactDisplayName(contact, t("unknown"));
   const initials = displayName.charAt(0).toUpperCase();
 
   const handleClick = useCallback(() => {
@@ -474,8 +475,15 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {displayName}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+            {conversation.channel === "messenger" && (
+              <span className="shrink-0 rounded bg-blue-500/15 px-1 text-[9px] font-semibold uppercase text-blue-400">
+                Messenger
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>

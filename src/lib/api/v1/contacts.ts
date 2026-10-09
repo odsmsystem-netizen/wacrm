@@ -19,7 +19,7 @@ export const CONTACT_SELECT = '*, contact_tags(tags(*))';
 
 export interface ApiContact {
   id: string;
-  phone: string;
+  phone: string | null;
   name: string | null;
   email: string | null;
   company: string | null;
@@ -46,7 +46,7 @@ export function serializeContact(row: Record<string, unknown>): ApiContact {
   const joins = (row.contact_tags as RawTagJoin[] | undefined) ?? [];
   return {
     id: row.id as string,
-    phone: row.phone as string,
+    phone: (row.phone as string | null) ?? null,
     name: (row.name as string | null) ?? null,
     email: (row.email as string | null) ?? null,
     company: (row.company as string | null) ?? null,

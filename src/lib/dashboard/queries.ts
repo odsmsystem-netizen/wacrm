@@ -1,3 +1,4 @@
+import { contactDisplayName } from '@/lib/contacts/display-name';
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   daysAgoStart,
@@ -324,11 +325,11 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     })
   }
 
-  for (const c of (contacts.data ?? []) as Array<{ id: string; name: string | null; phone: string; created_at: string }>) {
+  for (const c of (contacts.data ?? []) as Array<{ id: string; name: string | null; phone: string | null; external_id?: string | null; created_at: string }>) {
     items.push({
       id: `contact-${c.id}`,
       kind: 'contact',
-      text: `New contact: ${c.name || c.phone}`,
+      text: `New contact: ${contactDisplayName(c)}`,
       at: c.created_at,
       href: '/contacts',
     })

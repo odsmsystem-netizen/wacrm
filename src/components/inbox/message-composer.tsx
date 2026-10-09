@@ -118,6 +118,8 @@ interface MessageComposerProps {
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
   onClearReply?: () => void;
+  /** Messenger solo admite texto en esta versión: oculta adjuntos y plantillas. */
+  textOnly?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -140,6 +142,7 @@ export function MessageComposer({
   onOpenTemplates,
   replyTo,
   onClearReply,
+  textOnly,
 }: MessageComposerProps) {
   const t = useTranslations("Inbox.composer");
 
@@ -551,6 +554,7 @@ export function MessageComposer({
           <p className="text-xs text-amber-400">
             {t("sessionExpiredHint")}
           </p>
+          {!textOnly && (
           <Button
             variant="ghost"
             size="sm"
@@ -560,6 +564,7 @@ export function MessageComposer({
             <LayoutTemplate className="mr-1 h-3 w-3" />
             {t("templates")}
           </Button>
+          )}
         </div>
       )}
 
@@ -630,6 +635,8 @@ export function MessageComposer({
         </div>
       ) : (
         <div className="flex items-end gap-2">
+          {!textOnly && (
+            <>
           {/* Attach menu — photo / video / document / voice. */}
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -708,6 +715,8 @@ export function MessageComposer({
           >
             <LayoutTemplate className="h-4 w-4" />
           </GatedButton>
+            </>
+          )}
 
           <GatedButton
             variant="ghost"
