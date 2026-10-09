@@ -10,6 +10,7 @@ import {
 } from './date-utils'
 import type {
   ActivityItem,
+  ContactSourcesData,
   ConversationsSeriesPoint,
   MetricsBundle,
   PipelineDonutData,
@@ -127,6 +128,47 @@ export async function loadConversationsSeries(
   }
 
   return keys.map((day) => ({ day, ...(buckets.get(day) ?? { incoming: 0, outgoing: 0 }) }))
+}
+
+// --- 2b. Origen de los contactos ---------------------------------------
+
+/**
+ * Conversaciones NUEVAS del periodo (created_at) por origen: Messenger,
+ * WhatsApp por anuncio, WhatsApp por publicación y WhatsApp orgánico
+ * (sin ad_referral). Cuatro conteos exactos; cualquier error se lanza, para
+ * no mostrar ceros que parezcan datos reales.
+ */
+export async function loadContactSources(
+  db: DB,
+  rangeDays: number,
+): Promise<ContactSourcesData> {
+  const start = daysAgoStart(rangeDays - 1).toISOString()
+  const base = () =>
+    db
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', start)
+
+  const [messenger, ad, post, organic] = await Promise.all([
+    base().eq('channel', 'messenger'),
+    base().eq('channel', 'whatsapp').eq('ad_referral->>source_type', 'ad'),
+    base().eq('channel', 'whatsapp').eq('ad_referral->>source_type', 'post'),
+    base().eq('channel', 'whatsapp').is('ad_referral', null),
+  ])
+  for (const res of [messenger, ad, post, organic]) {
+    if (res.error) throw res.error
+  }
+
+  const data = {
+    messenger: messenger.count ?? 0,
+    whatsappAd: ad.count ?? 0,
+    whatsappPost: post.count ?? 0,
+    whatsappOrganic: organic.count ?? 0,
+  }
+  return {
+    ...data,
+    total: data.messenger + data.whatsappAd + data.whatsappPost + data.whatsappOrganic,
+  }
 }
 
 // --- 3. Pipeline donut -------------------------------------------------

@@ -21,6 +21,18 @@ export interface ConversationsSeriesPoint {
   outgoing: number
 }
 
+/**
+ * Conversaciones NUEVAS del periodo por origen del contacto. `total` es la
+ * suma de los cuatro orígenes.
+ */
+export interface ContactSourcesData {
+  total: number
+  whatsappOrganic: number
+  whatsappAd: number
+  whatsappPost: number
+  messenger: number
+}
+
 export interface PipelineStageSlice {
   id: string
   name: string
