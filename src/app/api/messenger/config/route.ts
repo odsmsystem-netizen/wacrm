@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomBytes } from 'node:crypto'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { encrypt } from '@/lib/whatsapp/encryption'
-import { getPage, MessengerApiError } from '@/lib/messenger/graph'
+import { inspectPageToken, MessengerApiError } from '@/lib/messenger/graph'
 import { requestOrigin } from '@/lib/http/request-origin'
 
 // Conectar la página de Facebook a la cuenta. Solo administradores: el token
@@ -56,14 +56,20 @@ export async function POST(request: Request) {
 
     // Se valida contra Meta antes de guardar nada: un token que no es de esa
     // página dejaría el webhook recibiendo mensajes que no podemos contestar.
-    let page: { id: string; name: string }
+    let info: { pageId: string; isValid: boolean; type: string }
     try {
-      page = await getPage(token)
+      info = await inspectPageToken(token)
     } catch (err) {
       const reason = err instanceof MessengerApiError ? err.message : 'No se pudo validar el token'
       return NextResponse.json({ error: reason }, { status: 400 })
     }
-    if (page.id !== pageId) {
+    if (!info.isValid || info.type !== 'PAGE') {
+      return NextResponse.json(
+        { error: 'El token no es un token de página válido o ya venció' },
+        { status: 400 },
+      )
+    }
+    if (info.pageId !== pageId) {
       return NextResponse.json(
         { error: 'El token no corresponde a esa página' },
         { status: 400 },
@@ -88,8 +94,8 @@ export async function POST(request: Request) {
       {
         account_id: accountId,
         user_id: userId,
-        page_id: page.id,
-        page_name: page.name,
+        page_id: pageId,
+        page_name: null,
         page_access_token: encrypt(token),
         verify_token: verifyToken,
         status: 'connected',
@@ -104,8 +110,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       connected: true,
-      page_id: page.id,
-      page_name: page.name,
+      page_id: pageId,
+      page_name: null,
       verify_token: verifyToken,
       webhook_url: webhookUrl(request),
     })

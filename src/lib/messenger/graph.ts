@@ -40,10 +40,26 @@ async function graphFetch(
   return json
 }
 
-/** La página a la que pertenece el token. Sirve para validar lo que pega el admin. */
-export async function getPage(token: string): Promise<{ id: string; name: string }> {
-  const json = await graphFetch('/me?fields=id,name', token)
-  return { id: String(json.id), name: String(json.name ?? '') }
+/**
+ * A qué página pertenece un token de página, y si sigue siendo válido. Sirve para
+ * validar lo que pega el administrador antes de guardarlo.
+ *
+ * Usa `debug_token` y no `GET /me`: leer la página exige el permiso
+ * `pages_read_engagement`, que el caso de uso de Messenger no concede (el token solo
+ * trae `pages_messaging`, que es lo único que hace falta para recibir y responder).
+ * El token de acceso viaja en el encabezado; `input_token` va en la consulta porque
+ * así lo pide la API (con POST no responde).
+ */
+export async function inspectPageToken(
+  token: string,
+): Promise<{ pageId: string; isValid: boolean; type: string }> {
+  const json = await graphFetch(`/debug_token?input_token=${encodeURIComponent(token)}`, token)
+  const data = (json.data ?? {}) as { profile_id?: unknown; is_valid?: unknown; type?: unknown }
+  return {
+    pageId: typeof data.profile_id === 'string' ? data.profile_id : '',
+    isValid: data.is_valid === true,
+    type: typeof data.type === 'string' ? data.type : '',
+  }
 }
 
 /** Respuesta dentro de la ventana de 24 h (`messaging_type: RESPONSE`). */

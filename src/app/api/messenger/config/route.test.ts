@@ -9,9 +9,9 @@ vi.mock('@/lib/auth/account', () => ({
   },
 }))
 vi.mock('@/lib/whatsapp/encryption', () => ({ encrypt: (s: string) => `enc(${s})` }))
-const getPage = vi.fn()
+const inspectPageToken = vi.fn()
 vi.mock('@/lib/messenger/graph', () => ({
-  getPage: (...a: unknown[]) => getPage(...a),
+  inspectPageToken: (...a: unknown[]) => inspectPageToken(...a),
   MessengerApiError: class extends Error {},
 }))
 
@@ -26,7 +26,7 @@ const get = () => new Request('https://crm.ambar-apps.cloud/api/messenger/config
 
 beforeEach(() => {
   db = makeFakeDb()
-  getPage.mockReset().mockResolvedValue({ id: 'PAGE1', name: 'Ambar Cargo' })
+  inspectPageToken.mockReset().mockResolvedValue({ pageId: 'PAGE1', isValid: true, type: 'PAGE' })
 })
 
 describe('/api/messenger/config', () => {
@@ -81,11 +81,11 @@ describe('/api/messenger/config', () => {
     const res = await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toMatchObject({ connected: true, page_id: 'PAGE1', page_name: 'Ambar Cargo' })
+    expect(body).toMatchObject({ connected: true, page_id: 'PAGE1', page_name: null })
     expect(body.verify_token).toMatch(/^[0-9a-f]{32}$/)
     expect(JSON.stringify(body)).not.toContain('TOK')
 
-    expect(getPage).toHaveBeenCalledWith('TOK')
+    expect(inspectPageToken).toHaveBeenCalledWith('TOK')
     expect(db.tables.messenger_config[0]).toMatchObject({
       account_id: 'acct-1',
       page_id: 'PAGE1',
@@ -95,9 +95,19 @@ describe('/api/messenger/config', () => {
   })
 
   it('POST rechaza un token que no es de esa página', async () => {
-    getPage.mockResolvedValue({ id: 'OTRA', name: 'Otra' })
+    inspectPageToken.mockResolvedValue({ pageId: 'OTRA', isValid: true, type: 'PAGE' })
     const res = await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))
     expect(res.status).toBe(400)
+    expect(db.tables.messenger_config ?? []).toHaveLength(0)
+  })
+
+  it('POST rechaza un token vencido o que no es de página, sin guardar nada', async () => {
+    inspectPageToken.mockResolvedValue({ pageId: 'PAGE1', isValid: false, type: 'PAGE' })
+    expect((await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))).status).toBe(400)
+
+    inspectPageToken.mockResolvedValue({ pageId: 'PAGE1', isValid: true, type: 'USER' })
+    expect((await POST(post({ page_id: 'PAGE1', page_access_token: 'TOK' }))).status).toBe(400)
+
     expect(db.tables.messenger_config ?? []).toHaveLength(0)
   })
 
