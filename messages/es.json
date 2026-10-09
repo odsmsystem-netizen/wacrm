@@ -1947,6 +1947,7 @@
     "anuncios": {
       "description": "Promociones que Claudia puede mencionar y enviar como imagen. Ella decide cuándo viene al caso, sin insistir.",
       "loadFailed": "No se pudo cargar la configuración de promociones",
+      "retry": "Reintentar",
       "saveFailed": "No se pudo guardar",
       "switchLabel": "Claudia puede hablar de promociones",
       "switchHint": "Apagado por omisión. Nunca pasa por encima del interruptor general de Claudia de la barra superior: si ella está apagada, no envía nada.",

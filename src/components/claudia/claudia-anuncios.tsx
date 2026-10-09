@@ -108,8 +108,13 @@ export function ClaudiaAnuncios({
     return () => clearInterval(id);
   }, []);
 
+  // Si la carga falla NO se muestra el formulario: tendría los valores por omisión y un clic en
+  // Guardar los escribiría encima del horario y del texto reales.
+  const [cargaFallida, setCargaFallida] = useState(false);
+
   const cargar = useCallback(async () => {
     setLoading(true);
+    setCargaFallida(false);
     try {
       const [rc, ri] = await Promise.all([
         fetch('/api/claudia/config'),
@@ -119,6 +124,7 @@ export function ClaudiaAnuncios({
       const di = await ri.json().catch(() => ({}));
       if (!rc.ok || !ri.ok) {
         toast.error(dc.error ?? di.error ?? t('loadFailed'));
+        setCargaFallida(true);
         return;
       }
       const c = aConfig(dc);
@@ -130,6 +136,7 @@ export function ClaudiaAnuncios({
       setImagenes((di.imagenes as Imagen[]) ?? []);
     } catch {
       toast.error(t('loadFailed'));
+      setCargaFallida(true);
     } finally {
       setLoading(false);
     }
@@ -314,6 +321,19 @@ export function ClaudiaAnuncios({
       <div className="flex items-center justify-center py-16 text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       </div>
+    );
+  }
+
+  if (cargaFallida) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-sm text-muted-foreground">{t('loadFailed')}</p>
+          <Button variant="outline" onClick={() => void cargar()}>
+            {t('retry')}
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 

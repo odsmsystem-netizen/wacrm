@@ -1959,6 +1959,7 @@
     "anuncios": {
       "description": "Promotions Claudia can mention and send as images. She decides on her own when it fits, without pushing.",
       "loadFailed": "Failed to load the promotions settings",
+      "retry": "Retry",
       "saveFailed": "Failed to save",
       "switchLabel": "Claudia can talk about promotions",
       "switchHint": "Off by default. This never overrides the general Claudia switch in the top bar: if she is off, she sends nothing.",

@@ -59,7 +59,12 @@ CREATE TABLE IF NOT EXISTS claudia_promociones_imagenes (
   nombre     text NOT NULL,
   tamano     integer NOT NULL,
   orden      integer NOT NULL DEFAULT 0,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  -- La ruta debe vivir en la carpeta de la PROPIA cuenta. Sin esto, un administrador podría
+  -- insertar por la API de Supabase una fila con la ruta de otra cuenta, y el agente le mandaría
+  -- a sus clientes la URL pública de una imagen ajena.
+  CONSTRAINT claudia_promociones_imagenes_ruta_de_la_cuenta
+    CHECK (ruta LIKE account_id::text || '/%')
 );
 
 CREATE INDEX IF NOT EXISTS claudia_promociones_imagenes_account_idx

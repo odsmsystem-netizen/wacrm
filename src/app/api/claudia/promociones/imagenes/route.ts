@@ -57,11 +57,27 @@ export async function GET() {
  * Sube con el cliente del usuario: la RLS de Storage garantiza que solo
  * escriba dentro de la carpeta de su cuenta.
  */
+/** Holgura sobre el límite del archivo para la envoltura del multipart (bordes, encabezados). */
+const MARGEN_MULTIPART = 64 * 1024;
+
 export async function POST(request: Request) {
   try {
     const { supabase, accountId, userId } = await requireRole('admin');
     const limit = checkRateLimit(`claudia-promos:${userId}`, RATE_LIMITS.adminAction);
     if (!limit.success) return rateLimitResponse(limit);
+
+    // `formData()` carga TODO el cuerpo en memoria antes de que se pueda mirar su tamaño: un
+    // administrador (o una sesión robada) podría mandar un archivo enorme y llenar la memoria del
+    // servidor. Si la petición declara un tamaño muy por encima del límite se corta aquí, sin
+    // leerla. El margen cubre la envoltura del multipart; la comprobación exacta de abajo queda
+    // como respaldo para cuando no venga `Content-Length`.
+    const declarado = Number(request.headers.get('content-length'));
+    if (Number.isFinite(declarado) && declarado > MAX_BYTES_IMAGEN + MARGEN_MULTIPART) {
+      return NextResponse.json(
+        { error: `La imagen supera el límite de ${MAX_BYTES_IMAGEN / 1024 / 1024} MB` },
+        { status: 413 },
+      );
+    }
 
     const form = await request.formData().catch(() => null);
     const archivo = form?.get('archivo');

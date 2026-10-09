@@ -12,6 +12,8 @@ type Params = { params: Promise<{ id: string }> };
  * otra cuenta pasaría la validación de formato. Si la imagen no es de la
  * cuenta, 404 (no se confirma que exista en otra).
  */
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { supabase, accountId, userId } = await requireRole('admin');
@@ -19,6 +21,12 @@ export async function DELETE(_request: Request, { params }: Params) {
     if (!limit.success) return rateLimitResponse(limit);
 
     const { id } = await params;
+
+    // Un id que no es UUID no puede existir: se responde 404 sin molestar a la base (que daría un
+    // error de sintaxis y, con él, un 500 en vez del 404 que corresponde).
+    if (!ES_UUID.test(id)) {
+      return NextResponse.json({ error: 'No encontrada' }, { status: 404 });
+    }
 
     // Se lee la ruta ANTES de borrar la fila: después ya no habría forma
     // de saber qué objeto del bucket quedó huérfano.

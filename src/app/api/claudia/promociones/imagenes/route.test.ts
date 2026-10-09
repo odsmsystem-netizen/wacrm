@@ -138,6 +138,19 @@ describe('POST /api/claudia/promociones/imagenes', () => {
     expect(mocks.upload).not.toHaveBeenCalled();
   });
 
+  it('rechaza por Content-Length, sin leer el cuerpo, una subida mucho mayor que el límite', async () => {
+    const peticion = subir(JPEG);
+    const leer = vi.spyOn(peticion, 'formData');
+    const enorme = new Request('http://localhost/x', {
+      method: 'POST',
+      headers: { 'content-length': String(50 * 1024 * 1024) },
+    });
+    const res = await POST(Object.assign(enorme, { formData: leer }) as Request);
+    expect(res.status).toBe(413);
+    expect(leer).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
   it('rechaza una petición sin archivo', async () => {
     const res = await POST(
       new Request('http://localhost/x', { method: 'POST', body: new FormData() }),
