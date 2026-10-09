@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, ListChecks, Sparkles, Smile } from 'lucide-react';
+import { BarChart3, ListChecks, Megaphone, Sparkles, Smile } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
@@ -9,9 +9,10 @@ import { canEditSettings } from '@/lib/auth/roles';
 import { ClaudiaKnowledge } from '@/components/claudia/claudia-knowledge';
 import { ClaudiaPersonality } from '@/components/claudia/claudia-personality';
 import { ClaudiaBehaviors } from '@/components/claudia/claudia-behaviors';
+import { ClaudiaAnuncios } from '@/components/claudia/claudia-anuncios';
 import { ClaudiaUsage } from '@/components/claudia/claudia-usage';
 
-type Tab = 'knowledge' | 'personality' | 'behaviors' | 'usage';
+type Tab = 'knowledge' | 'personality' | 'behaviors' | 'anuncios' | 'usage';
 
 export default function ClaudiaPage() {
   const t = useTranslations('Claudia');
@@ -46,6 +47,9 @@ export default function ClaudiaPage() {
             <TabsTrigger value="behaviors">
               <ListChecks className="mr-1.5 h-4 w-4" /> {t('tabs.behaviors')}
             </TabsTrigger>
+            <TabsTrigger value="anuncios">
+              <Megaphone className="mr-1.5 h-4 w-4" /> {t('tabs.anuncios')}
+            </TabsTrigger>
             {canViewUsage && (
               <TabsTrigger value="usage">
                 <BarChart3 className="mr-1.5 h-4 w-4" /> {t('tabs.usage')}
@@ -63,6 +67,10 @@ export default function ClaudiaPage() {
 
           <TabsContent value="behaviors" className="mt-4">
             <ClaudiaBehaviors accountId={accountId} canEdit={canEdit} />
+          </TabsContent>
+
+          <TabsContent value="anuncios" className="mt-4">
+            <ClaudiaAnuncios accountId={accountId} canEdit={canEdit} />
           </TabsContent>
 
           {canViewUsage && (
