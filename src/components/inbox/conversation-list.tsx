@@ -9,6 +9,8 @@ import {
   normalizeConversations,
 } from "@/lib/inbox/conversations";
 import { cn } from "@/lib/utils";
+import { OriginBadge } from "@/components/inbox/origin-badge";
+import { conversationOrigin } from "@/lib/inbox/conversation-origin";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -479,22 +481,7 @@ function ConversationItem({
             <span className="truncate text-sm font-medium text-foreground">
               {displayName}
             </span>
-            {conversation.channel === "messenger" && (
-              <span className="shrink-0 rounded bg-blue-500/15 px-1 text-[9px] font-semibold uppercase text-blue-400">
-                Messenger
-              </span>
-            )}
-            {/* Origen publicitario de WhatsApp; orgánico = sin insignia. */}
-            {conversation.ad_referral?.source_type === "ad" && (
-              <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-semibold uppercase text-amber-400">
-                {t("adBadge")}
-              </span>
-            )}
-            {conversation.ad_referral?.source_type === "post" && (
-              <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-semibold uppercase text-amber-400">
-                {t("postBadge")}
-              </span>
-            )}
+            <OriginBadge origin={conversationOrigin(conversation)} />
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>
