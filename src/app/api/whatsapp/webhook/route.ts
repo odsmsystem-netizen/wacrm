@@ -4,6 +4,7 @@ import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
 import { mirrorInboundMedia } from '@/lib/whatsapp/mirror-inbound-media'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
+import { extractAdReferral } from '@/lib/whatsapp/ad-referral'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { reopenClosedConversation } from '@/lib/conversations/reopen'
 import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
@@ -48,6 +49,8 @@ interface WhatsAppMessage {
   sticker?: { id: string; mime_type: string }
   location?: { latitude: number; longitude: number; name?: string; address?: string }
   reaction?: { message_id: string; emoji: string }
+  /** Origen publicitario (anuncio/publicación); lo valida extractAdReferral. */
+  referral?: unknown
   /**
    * Set when the customer taps a button or list row on an interactive
    * message we sent. `button_reply.id` / `list_reply.id` is whatever id
@@ -771,6 +774,31 @@ async function processMessage(
 
   if (convError) {
     console.error('Error updating conversation:', convError)
+  }
+
+  // Origen publicitario: solo el primer mensaje de quien tocó un anuncio trae
+  // `referral`. Va DESPUÉS del corte por duplicado (un reintento de Meta no
+  // reescribe) y un fallo aquí nunca debe perder ni detener el mensaje.
+  const adReferral = extractAdReferral(message.referral)
+  if (adReferral) {
+    try {
+      const { error: referralError } = await supabaseAdmin()
+        .from('conversations')
+        .update({ ad_referral: adReferral })
+        .eq('id', conversation.id)
+        .eq('account_id', accountId)
+      if (referralError) {
+        console.error(
+          `[webhook] no se pudo guardar el origen publicitario de la conversación ${conversation.id}:`,
+          referralError.message
+        )
+      }
+    } catch (err) {
+      console.error(
+        `[webhook] no se pudo guardar el origen publicitario de la conversación ${conversation.id}:`,
+        err instanceof Error ? err.message : String(err)
+      )
+    }
   }
 
   // A customer writing again re-opens the thread (issue #409). Kept as a

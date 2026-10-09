@@ -16,6 +16,13 @@ const h = vi.hoisted(() => ({
     conversation: { id: 'conv-1', unread_count: 0, account_id: 'acc-1' },
     upsertCalls: [] as { row: Record<string, unknown>; options: unknown }[],
     rpcCalls: [] as { name: string; args: Record<string, unknown> }[],
+    /** update() sobre conversations: valores y filtros .eq() encadenados. */
+    convUpdates: [] as {
+      values: Record<string, unknown>
+      filters: [string, unknown][]
+    }[],
+    /** Error con el que resuelve el update de conversations, si hay. */
+    convUpdateError: null as { message: string } | null,
     afterCallbacks: [] as (() => Promise<void> | void)[],
     automationStarted: 0,
     automationCompleted: 0,
@@ -65,6 +72,24 @@ vi.mock('@supabase/supabase-js', () => ({
         case 'conversations':
           // findOrCreateConversation: select().eq().eq().order().limit()
           return {
+            // Origen publicitario: update(values).eq('id').eq('account_id')
+            update: (values: Record<string, unknown>) => {
+              const call = {
+                values,
+                filters: [] as [string, unknown][],
+              }
+              h.state.convUpdates.push(call)
+              const chain = {
+                eq: (col: string, val: unknown) => {
+                  call.filters.push([col, val])
+                  return chain
+                },
+                then: (
+                  resolve: (v: { error: { message: string } | null }) => void,
+                ) => resolve({ error: h.state.convUpdateError }),
+              }
+              return chain
+            },
             select: () => ({
               eq: () => ({
                 eq: () => ({
@@ -254,6 +279,8 @@ beforeEach(() => {
   h.state.conversation = { id: 'conv-1', unread_count: 0, account_id: 'acc-1' }
   h.state.upsertCalls = []
   h.state.rpcCalls = []
+  h.state.convUpdates = []
+  h.state.convUpdateError = null
   h.state.afterCallbacks = []
   h.state.automationStarted = 0
   h.state.automationCompleted = 0
@@ -536,5 +563,69 @@ describe('inbound webhook: after() awaits automations (#368)', () => {
     // If the dispatches were fire-and-forget, completed would still be 0
     // here — the callback would have resolved before the timers fired.
     expect(h.state.automationCompleted).toBe(3)
+  })
+})
+
+describe('inbound webhook: origen publicitario (referral)', () => {
+  const AD_REFERRAL = {
+    source_type: 'ad',
+    source_id: '999',
+    source_url: 'https://fb.me/x',
+    headline: 'Envíos',
+  }
+  const adUpdates = () =>
+    h.state.convUpdates.filter((u) => 'ad_referral' in u.values)
+
+  it('un mensaje con referral de anuncio guarda ad_referral filtrando por conversación y cuenta', async () => {
+    await runWebhook({ ...TEXT_MESSAGE, referral: AD_REFERRAL })
+
+    const updates = adUpdates()
+    expect(updates).toHaveLength(1)
+    expect(updates[0].values.ad_referral).toMatchObject({
+      source_type: 'ad',
+      source_id: '999',
+      headline: 'Envíos',
+    })
+    expect(updates[0].filters).toEqual([
+      ['id', 'conv-1'],
+      ['account_id', 'acc-1'],
+    ])
+  })
+
+  it('sin referral no escribe ad_referral', async () => {
+    await runWebhook()
+    expect(adUpdates()).toHaveLength(0)
+  })
+
+  it('un reintento duplicado no vuelve a escribir', async () => {
+    h.state.messageUpsertResult = []
+    await runWebhook({ ...TEXT_MESSAGE, referral: AD_REFERRAL })
+    expect(adUpdates()).toHaveLength(0)
+  })
+
+  it('un referral inválido (story) no escribe nada', async () => {
+    await runWebhook({
+      ...TEXT_MESSAGE,
+      referral: { ...AD_REFERRAL, source_type: 'story' },
+    })
+    expect(adUpdates()).toHaveLength(0)
+  })
+
+  it('si el update falla, el procesamiento continúa y no lanza', async () => {
+    h.state.convUpdateError = { message: 'boom' }
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(
+      runWebhook({ ...TEXT_MESSAGE, referral: AD_REFERRAL }),
+    ).resolves.toBeDefined()
+
+    expect(errSpy).toHaveBeenCalledWith(
+      expect.stringContaining('conv-1'),
+      expect.stringContaining('boom'),
+    )
+    expect(h.state.rpcCalls).toHaveLength(1)
+    expect(h.dispatchInboundToFlows).toHaveBeenCalledTimes(1)
+    expect(h.dispatchWebhookEvent).toHaveBeenCalledTimes(1)
+    errSpy.mockRestore()
   })
 })
