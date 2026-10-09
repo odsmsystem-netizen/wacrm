@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Contact, Deal, ContactNote, Tag } from "@/types";
+import type { AdReferral } from "@/lib/whatsapp/ad-referral";
 import {
   Phone,
   Mail,
@@ -24,9 +25,72 @@ import { contactDisplayName } from "@/lib/contacts/display-name";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Anuncio o publicación que originó la conversación activa (si lo hay). */
+  adReferral?: AdReferral | null;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+/** Enlace seguro: solo https. El lector ya filtra, pero se revalida al pintar. */
+function isHttps(url: string | null | undefined): url is string {
+  return typeof url === "string" && url.startsWith("https://");
+}
+
+// `captured_at` viene de una columna JSONB: si alguna vez llegara corrupto, `format` lanzaría
+// RangeError y tumbaría la barra lateral entera. Mejor no mostrar la fecha que romper la bandeja.
+function formatCapturedAt(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : format(d, "MMM d, yyyy HH:mm");
+}
+
+function OriginCard({ referral }: { referral: AdReferral }) {
+  const t = useTranslations("Inbox.sidebar");
+  const [imgFailed, setImgFailed] = useState(false);
+  const thumb = referral.thumbnail_url ?? referral.image_url;
+  const label = referral.source_type === "ad" ? t("originAd") : t("originPost");
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+        {t("originTitle")} · {label}
+      </div>
+      {referral.headline && (
+        <p className="mt-1.5 text-sm font-bold text-foreground">{referral.headline}</p>
+      )}
+      {referral.body && (
+        <p className="mt-1 line-clamp-4 text-xs text-muted-foreground">{referral.body}</p>
+      )}
+      {isHttps(thumb) && !imgFailed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumb}
+          alt={t("originThumbAlt", { label })}
+          referrerPolicy="no-referrer"
+          onError={() => setImgFailed(true)}
+          className="mt-2 max-h-32 w-full rounded-md object-cover"
+        />
+      )}
+      {isHttps(referral.source_url) && (
+        <a
+          href={referral.source_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+        >
+          {t("originView")}
+        </a>
+      )}
+      {referral.source_id && (
+        <p className="mt-1.5 truncate text-[10px] text-muted-foreground/70">
+          {t("originId", { id: referral.source_id })}
+        </p>
+      )}
+      <p className="text-[10px] text-muted-foreground/70">
+        {formatCapturedAt(referral.captured_at)}
+      </p>
+    </div>
+  );
+}
+
+export function ContactSidebar({ contact, adReferral }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -178,6 +242,15 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
               </div>
             )}
           </div>
+
+          {adReferral && (
+            // key: sin ella React reutiliza la tarjeta al cambiar de conversación y, si la
+            // imagen de la anterior falló, la miniatura de la nueva quedaría oculta.
+            <OriginCard
+              key={`${adReferral.source_id ?? ''}|${adReferral.captured_at}`}
+              referral={adReferral}
+            />
+          )}
 
           {/* Divider */}
           <div className="my-4 border-t border-border" />

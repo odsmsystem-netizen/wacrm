@@ -484,6 +484,17 @@ function ConversationItem({
                 Messenger
               </span>
             )}
+            {/* Origen publicitario de WhatsApp; orgánico = sin insignia. */}
+            {conversation.ad_referral?.source_type === "ad" && (
+              <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-semibold uppercase text-amber-400">
+                {t("adBadge")}
+              </span>
+            )}
+            {conversation.ad_referral?.source_type === "post" && (
+              <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-semibold uppercase text-amber-400">
+                {t("postBadge")}
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>

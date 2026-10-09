@@ -1,5 +1,6 @@
 import type { AccountRole } from "@/lib/auth/roles";
 import type { InteractiveMessagePayload } from "@/lib/whatsapp/interactive";
+import type { AdReferral } from "@/lib/whatsapp/ad-referral";
 
 export type {
   InteractiveMessagePayload,
@@ -179,6 +180,8 @@ export interface Conversation {
   contact?: Contact;
   /** Ausente = 'whatsapp' (lo anterior a la migración 048). */
   channel?: ConversationChannel;
+  /** Anuncio o publicación de Meta que originó el contacto; null/ausente = orgánico (migración 049). */
+  ad_referral?: AdReferral | null;
   /**
    * AI auto-reply state for this thread (migration 029 + 033):
    *  - `ai_autoreply_disabled` — the bot is paused here (a human took

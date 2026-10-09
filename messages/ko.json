@@ -111,6 +111,20 @@
       "tooltipOutgoing": "발신 {count}건",
       "ariaLabel": "일별 대화 수"
     },
+    "contactSources": {
+      "title": "Where do contacts come from?",
+      "description": "New conversations by channel and origin",
+      "days": "{count} days",
+      "total": "new conversations",
+      "noData": "No new conversations",
+      "noDataHint": "New conversations in this period will show up here by origin.",
+      "whatsappOrganic": "WhatsApp organic",
+      "whatsappAd": "WhatsApp from ads",
+      "whatsappPost": "WhatsApp from posts",
+      "messenger": "Messenger",
+      "barLabel": "{name}: {count} ({percent}%)",
+      "note": "Conversations from before ad tracking was enabled are counted as organic."
+    },
     "pipelineDonut": {
       "title": "파이프라인 금액",
       "description": "단계별 진행 중인 딜",
@@ -139,6 +153,8 @@
     },
     "conversationList": {
       "searchPlaceholder": "대화 검색...",
+      "adBadge": "Ad",
+      "postBadge": "Post",
       "filterAll": "전체",
       "filterUnread": "읽지 않음",
       "filterOpen": "열림",
@@ -286,6 +302,12 @@
       "notes": "메모",
       "deals": "딜",
       "noTags": "태그 없음",
+      "originTitle": "Contact origin",
+      "originAd": "Meta ad",
+      "originPost": "Meta post",
+      "originView": "View ad",
+      "originId": "ID: {id}",
+      "originThumbAlt": "Preview of the {label} that brought this contact",
       "noDeals": "딜 없음",
       "addNotePlaceholder": "메모 추가..."
     },

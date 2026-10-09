@@ -111,6 +111,20 @@
       "tooltipOutgoing": "{count} salientes",
       "ariaLabel": "Conversaciones por día"
     },
+    "contactSources": {
+      "title": "¿Por dónde nos contactan?",
+      "description": "Conversaciones nuevas por canal y origen",
+      "days": "{count} días",
+      "total": "conversaciones nuevas",
+      "noData": "Sin conversaciones nuevas",
+      "noDataHint": "Las conversaciones nuevas del periodo aparecerán aquí por origen.",
+      "whatsappOrganic": "WhatsApp orgánico",
+      "whatsappAd": "WhatsApp por anuncio",
+      "whatsappPost": "WhatsApp por publicación",
+      "messenger": "Messenger",
+      "barLabel": "{name}: {count} ({percent}%)",
+      "note": "Las conversaciones anteriores a la activación del registro de anuncios se cuentan como orgánicas."
+    },
     "pipelineDonut": {
       "title": "Valor del embudo",
       "description": "Cotizaciones abiertas por etapa",
@@ -139,6 +153,8 @@
     },
     "conversationList": {
       "searchPlaceholder": "Buscar conversaciones...",
+      "adBadge": "Anuncio",
+      "postBadge": "Publicación",
       "filterAll": "Todas",
       "filterUnread": "Sin leer",
       "filterOpen": "Abiertas",
@@ -286,6 +302,12 @@
       "notes": "Notas",
       "deals": "Cotizaciones",
       "noTags": "Sin etiquetas",
+      "originTitle": "Origen del contacto",
+      "originAd": "Anuncio de Meta",
+      "originPost": "Publicación de Meta",
+      "originView": "Ver anuncio",
+      "originId": "ID: {id}",
+      "originThumbAlt": "Vista previa de {label} que trajo a este contacto",
       "noDeals": "Sin cotizaciones",
       "addNotePlaceholder": "Agregar una nota..."
     },

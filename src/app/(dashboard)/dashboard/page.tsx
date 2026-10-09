@@ -13,6 +13,7 @@ import {
 
 import {
   loadActivity,
+  loadContactSources,
   loadConversationsSeries,
   loadMetrics,
   loadPipelineDonut,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/dashboard/queries'
 import type {
   ActivityItem,
+  ContactSourcesData,
   ConversationsSeriesPoint,
   MetricsBundle,
   PipelineDonutData,
@@ -30,6 +32,7 @@ import { MetricCard } from '@/components/dashboard/metric-card'
 import { SkeletonCard } from '@/components/dashboard/skeleton'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
+import { ContactSourcesCard } from '@/components/dashboard/contact-sources-card'
 import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
@@ -55,6 +58,16 @@ export default function DashboardPage() {
   })
   const [seriesLoading, setSeriesLoading] = useState(true)
 
+  // Origen de los contactos: mismo esquema de caché por rango que `series`,
+  // con su propia pestaña de rango (no comparte la de la gráfica).
+  const [sourcesRange, setSourcesRange] = useState<RangeDays>(30)
+  const [sources, setSources] = useState<Record<RangeDays, ContactSourcesData | null>>({
+    7: null,
+    30: null,
+    90: null,
+  })
+  const [sourcesLoading, setSourcesLoading] = useState(true)
+
   const [pipeline, setPipeline] = useState<PipelineDonutData | null>(null)
   const [pipelineLoading, setPipelineLoading] = useState(true)
 
@@ -79,6 +92,11 @@ export default function DashboardPage() {
       .then((s) => setSeries((prev) => ({ ...prev, 30: s })))
       .catch((err) => console.error('[dashboard] series failed:', err))
       .finally(() => setSeriesLoading(false))
+
+    void loadContactSources(db, 30)
+      .then((s) => setSources((prev) => ({ ...prev, 30: s })))
+      .catch((err) => console.error('[dashboard] contact sources failed:', err))
+      .finally(() => setSourcesLoading(false))
 
     void loadPipelineDonut(db)
       .then((p) => setPipeline(p))
@@ -119,6 +137,20 @@ export default function DashboardPage() {
         .finally(() => setSeriesLoading(false))
     },
     [series],
+  )
+
+  const handleSourcesRangeChange = useCallback(
+    (r: RangeDays) => {
+      setSourcesRange(r)
+      if (sources[r] !== null) return
+      setSourcesLoading(true)
+      const db = createClient()
+      loadContactSources(db, r)
+        .then((s) => setSources((prev) => ({ ...prev, [r]: s })))
+        .catch((err) => console.error('[dashboard] contact sources failed:', err))
+        .finally(() => setSourcesLoading(false))
+    },
+    [sources],
   )
 
   return (
@@ -215,6 +247,14 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Por dónde nos contactan */}
+      <ContactSourcesCard
+        data={sources}
+        loading={sourcesLoading}
+        range={sourcesRange}
+        onRangeChange={handleSourcesRangeChange}
+      />
 
       {/* Response time */}
       <ResponseTimeChart data={responseTime} loading={responseTimeLoading} />
