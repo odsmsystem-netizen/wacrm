@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Menu, Settings as SettingsIcon, User } from "lucide-react";
+import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { useDesktopNotifications } from "@/hooks/use-desktop-notifications";
+import { Bell, Download, LogOut, Menu, Settings as SettingsIcon, User } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -50,6 +52,8 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
+  const { canInstall, install } = useInstallPrompt();
+  const { permission, enable: enableAlerts } = useDesktopNotifications();
   const titleKey = getPageTitleKey(pathname);
 
   const initial =
@@ -135,6 +139,24 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             {t("menuSettings")}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-border" />
+          {permission === "default" && (
+            <DropdownMenuItem
+              onClick={enableAlerts}
+              className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
+            >
+              <Bell className="size-4" />
+              {t("menuEnableAlerts")}
+            </DropdownMenuItem>
+          )}
+          {canInstall && (
+            <DropdownMenuItem
+              onClick={install}
+              className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
+            >
+              <Download className="size-4" />
+              {t("menuInstallApp")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={signOut}
             className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"

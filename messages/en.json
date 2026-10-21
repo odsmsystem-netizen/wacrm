@@ -56,7 +56,9 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "menuEnableAlerts": "Enable message alerts",
+    "menuInstallApp": "Install desktop app"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"

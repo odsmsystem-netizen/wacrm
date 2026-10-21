@@ -197,7 +197,13 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "no-store" }],
       },
       {
-        source: "/:path((?!_next/static|_next/image|api).*)",
+        // El service worker nunca debe quedar en caché: una versión
+        // vieja seguiría atendiendo los clics de las notificaciones.
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+      },
+      {
+        source: "/:path((?!_next/static|_next/image|api|sw.js).*)",
         headers: [
           {
             key: "Cache-Control",
