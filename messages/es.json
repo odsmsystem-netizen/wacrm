@@ -56,7 +56,9 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "menuEnableAlerts": "Activar avisos de mensajes",
+    "menuInstallApp": "Instalar app de escritorio"
   },
   "ModeToggle": {
     "switchMode": "Cambiar a modo {mode}"
