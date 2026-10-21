@@ -855,10 +855,13 @@ export function MessageThread({
       if (!conversation) return;
 
       const supabase = createClient();
-      const { error } = await supabase
-        .from("conversations")
-        .update({ assigned_agent_id: agentId })
-        .eq("id", conversation.id);
+      // Por RPC y no por UPDATE directo: un agente que transfiere su
+      // conversación deja de poder verla (migración 051), y RLS rechaza
+      // un UPDATE cuya fila resultante no es visible para quien lo hace.
+      const { error } = await supabase.rpc("reassign_conversation", {
+        p_conversation_id: conversation.id,
+        p_agent_id: agentId,
+      });
 
       if (error) {
         console.error("Failed to update assignment:", error);
