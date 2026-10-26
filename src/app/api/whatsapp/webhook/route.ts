@@ -16,6 +16,10 @@ import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
 } from '@/lib/whatsapp/template-webhook'
+import {
+  describeMetaStatusError,
+  type MetaStatusError,
+} from '@/lib/whatsapp/meta-status-error'
 
 // The `after()` callback in POST runs within this route's max duration.
 // Inbound processing can fan out to per-media Meta verification calls, so
@@ -94,6 +98,7 @@ interface WhatsAppWebhookEntry {
         status: string
         timestamp: string
         recipient_id: string
+        errors?: MetaStatusError[]
       }>
     }
     field: string
@@ -375,15 +380,23 @@ async function handleStatusUpdate(status: {
   status: string
   timestamp: string
   recipient_id: string
+  errors?: MetaStatusError[]
 }) {
   // 1) Mirror onto messages (legacy behavior) — Meta's status values
   //    already match the CHECK constraint on messages.status. No
   //    `.select()`: message_id is NOT unique (migration 009 — Meta ids
   //    repeat across numbers), so this updates 0..N rows and must not
   //    assume a single row.
+  const messageUpdate: Record<string, unknown> = { status: status.status }
+  // Meta explains a failed delivery in `errors`; keep it so the inbox can
+  // show why the bubble got its red cross (migration 052).
+  if (status.status === 'failed') {
+    const reason = describeMetaStatusError(status.errors)
+    if (reason) messageUpdate.error_detail = reason
+  }
   const { error: msgErr } = await supabaseAdmin()
     .from('messages')
-    .update({ status: status.status })
+    .update(messageUpdate)
     .eq('message_id', status.id)
 
   if (msgErr) {
