@@ -227,6 +227,9 @@ export function MessageBubble({
 
   const isAgent = message.sender_type === "agent" || message.sender_type === "bot";
   const time = format(new Date(message.created_at), "HH:mm");
+  const failedLabel = message.error_detail
+    ? t("notDeliveredReason", { reason: message.error_detail })
+    : t("notDelivered");
 
   // Row alignment + width cap are owned by <MessageActions> so its hover
   // group matches the bubble's content area, not the full row.
@@ -289,8 +292,26 @@ export function MessageBubble({
           >
             {time}
           </span>
-          {isAgent && <StatusIcon status={message.status} />}
+          {isAgent && (
+            <span
+              className="inline-flex"
+              title={
+                message.status === "failed"
+                  ? failedLabel
+                  : undefined
+              }
+            >
+              <StatusIcon status={message.status} />
+            </span>
+          )}
         </div>
+        {/* Why Meta couldn't deliver it — the red cross alone doesn't say.
+            Only outbound rows can fail; old failures have no detail. */}
+        {isAgent && message.status === "failed" && (
+          <p className="mt-1 max-w-xs break-words text-[11px] leading-snug text-red-200">
+            {failedLabel}
+          </p>
+        )}
       </div>
       {reactions && reactions.length > 0 && onToggleReaction && (
         <MessageReactions

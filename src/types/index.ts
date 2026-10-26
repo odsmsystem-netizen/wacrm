@@ -271,6 +271,12 @@ export interface Message {
    * badge in the inbox. Migration 033.
    */
   ai_generated?: boolean;
+  /**
+   * Why Meta couldn't deliver this outbound message ("131042 · Business
+   * eligibility payment issue"). Only set when `status === 'failed'` and
+   * Meta sent a reason. Null on rows that failed before migration 052.
+   */
+  error_detail?: string | null;
 }
 
 export type ReactionActor = 'customer' | 'agent';

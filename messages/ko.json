@@ -249,6 +249,8 @@
       "unsupported": "[지원되지 않는 메시지 형식]",
       "aiBadge": "AI",
       "aiBadgeTitle": "AI 어시스턴트가 자동으로 전송함",
+      "notDelivered": "전달되지 않음",
+      "notDeliveredReason": "전달되지 않음: {reason}",
       "download": "다운로드",
       "downloadFailed": "첨부파일을 다운로드할 수 없습니다",
       "viewImage": "이미지 보기",

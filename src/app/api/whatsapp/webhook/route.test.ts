@@ -15,6 +15,11 @@ const h = vi.hoisted(() => ({
     replyContextParent: null as { id: string } | null,
     conversation: { id: 'conv-1', unread_count: 0, account_id: 'acc-1' },
     upsertCalls: [] as { row: Record<string, unknown>; options: unknown }[],
+    /** update() sobre messages (webhook de estado): valores y message_id. */
+    messageUpdates: [] as {
+      values: Record<string, unknown>
+      messageId: unknown
+    }[],
     rpcCalls: [] as { name: string; args: Record<string, unknown> }[],
     /** update() sobre conversations: valores y filtros .eq() encadenados. */
     convUpdates: [] as {
@@ -109,6 +114,8 @@ vi.mock('@supabase/supabase-js', () => ({
           return {
             select: () => ({
               eq: () => ({
+                // handleStatusUpdate: select().eq('whatsapp_message_id').maybeSingle()
+                maybeSingle: () => Promise.resolve({ data: null, error: null }),
                 eq: () => ({
                   in: () => ({
                     order: () => ({
@@ -140,6 +147,11 @@ vi.mock('@supabase/supabase-js', () => ({
                 : // lookupInternalIdByMetaId: select('id').eq().eq().maybeSingle()
                   {
                     eq: () => ({
+                      // handleStatusUpdate (fan-out): select().eq().limit().maybeSingle()
+                      limit: () => ({
+                        maybeSingle: () =>
+                          Promise.resolve({ data: null, error: null }),
+                      }),
                       eq: () => ({
                         maybeSingle: () =>
                           Promise.resolve({
@@ -149,6 +161,13 @@ vi.mock('@supabase/supabase-js', () => ({
                       }),
                     }),
                   },
+            // Webhook de estado: update(values).eq('message_id', id)
+            update: (values: Record<string, unknown>) => ({
+              eq: (_col: string, messageId: unknown) => {
+                h.state.messageUpdates.push({ values, messageId })
+                return Promise.resolve({ error: null })
+              },
+            }),
             // Idempotent insert: upsert(...).select('id')
             upsert: (row: Record<string, unknown>, options: unknown) => {
               h.state.upsertCalls.push({ row, options })
@@ -278,6 +297,7 @@ beforeEach(() => {
   h.state.replyContextParent = null
   h.state.conversation = { id: 'conv-1', unread_count: 0, account_id: 'acc-1' }
   h.state.upsertCalls = []
+  h.state.messageUpdates = []
   h.state.rpcCalls = []
   h.state.convUpdates = []
   h.state.convUpdateError = null
@@ -307,6 +327,86 @@ beforeEach(() => {
         resolve()
       }, 0)
     })
+  })
+})
+
+function statusRequest(status: Record<string, unknown>) {
+  const body = {
+    entry: [
+      {
+        changes: [
+          {
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: 'pn-1' },
+              statuses: [status],
+            },
+          },
+        ],
+      },
+    ],
+  }
+  return {
+    text: async () => JSON.stringify(body),
+    headers: { get: () => 'sha256=stub' },
+  } as unknown as Request
+}
+
+async function runStatus(status: Record<string, unknown>) {
+  await POST(statusRequest(status))
+  for (const cb of h.state.afterCallbacks) await cb()
+}
+
+describe('status webhook: motivo de fallo (migración 052)', () => {
+  const base = {
+    id: 'wamid.OUT1',
+    timestamp: '1700000000',
+    recipient_id: '15551230000',
+  }
+
+  it('un failed guarda el motivo que manda Meta', async () => {
+    await runStatus({
+      ...base,
+      status: 'failed',
+      errors: [
+        {
+          code: 131042,
+          title: 'Business eligibility payment issue',
+          error_data: { details: 'Payment method missing.' },
+        },
+      ],
+    })
+
+    expect(h.state.messageUpdates).toEqual([
+      {
+        messageId: 'wamid.OUT1',
+        values: {
+          status: 'failed',
+          error_detail:
+            '131042 · Business eligibility payment issue — Payment method missing.',
+        },
+      },
+    ])
+  })
+
+  it('un failed sin errors solo cambia el status', async () => {
+    await runStatus({ ...base, status: 'failed' })
+
+    expect(h.state.messageUpdates).toEqual([
+      { messageId: 'wamid.OUT1', values: { status: 'failed' } },
+    ])
+  })
+
+  it('un delivered nunca toca error_detail', async () => {
+    await runStatus({
+      ...base,
+      status: 'delivered',
+      errors: [{ code: 1, title: 'ruido' }],
+    })
+
+    expect(h.state.messageUpdates).toEqual([
+      { messageId: 'wamid.OUT1', values: { status: 'delivered' } },
+    ])
   })
 })
 
