@@ -76,6 +76,8 @@ export interface AccountMember {
   avatar_url: string | null;
   role: AccountRole;
   joined_at: string;
+  /** Sign-in denied by the owner. Only present when the caller is the owner. */
+  blocked?: boolean;
 }
 
 /**
