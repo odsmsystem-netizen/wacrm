@@ -25,10 +25,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  Ban,
+  Check,
+  Copy,
+  KeyRound,
   Loader2,
   Mail,
   MailX,
   Plus,
+  ShieldCheck,
   Trash2,
   UsersRound,
 } from 'lucide-react';
@@ -83,6 +88,8 @@ interface Member {
   avatar_url: string | null;
   role: AccountRole;
   joined_at: string;
+  /** Only sent to the owner: sign-in denied. */
+  blocked?: boolean;
 }
 
 interface Invitation {
@@ -127,7 +134,7 @@ function fmtExpiresIn(iso: string, t: (key: string, values?: Record<string, stri
 export function MembersTab() {
   const t = useTranslations('Settings.members');
   const tRoles = useTranslations('Settings.roles');
-  const { user, canManageMembers } = useAuth();
+  const { user, canManageMembers, isOwner } = useAuth();
   const { getPresence, getRow, now } = usePresence();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -136,6 +143,15 @@ export function MembersTab() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removingMember, setRemovingMember] = useState<Member | null>(null);
+  // Owner-only tools. The recovery link is a credential: it lives only in
+  // this state (never in the URL, storage or a toast) and is dropped when
+  // the dialog closes.
+  const [resetResult, setResetResult] = useState<{
+    member: Member;
+    link: string;
+  } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [blockingMember, setBlockingMember] = useState<Member | null>(null);
   const [pendingMemberAction, setPendingMemberAction] = useState<string | null>(
     null,
   );
@@ -248,6 +264,73 @@ export function MembersTab() {
       setRemovingMember(null);
     } catch (err) {
       console.error('[MembersTab] remove error:', err);
+      toast.error('Could not reach the server');
+    } finally {
+      setPendingMemberAction(null);
+    }
+  }
+
+  async function handleResetPassword(member: Member) {
+    setPendingMemberAction(member.user_id);
+    try {
+      const res = await fetch(
+        `/api/account/members/${member.user_id}/reset-password`,
+        { method: 'POST' },
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || typeof payload.link !== 'string') {
+        toast.error(payload.error || t('resetFailed'));
+        return;
+      }
+      setLinkCopied(false);
+      setResetResult({ member, link: payload.link });
+    } catch (err) {
+      console.error('[MembersTab] reset password error:', err);
+      toast.error('Could not reach the server');
+    } finally {
+      setPendingMemberAction(null);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(resetResult.link);
+      setLinkCopied(true);
+      toast.success(t('linkCopied'));
+    } catch {
+      // Clipboard can be blocked (insecure context / permissions). The link
+      // is still selectable in the dialog, so just say so.
+      toast.error(t('resetFailed'));
+    }
+  }
+
+  async function handleSetBlocked(member: Member, blocked: boolean) {
+    setPendingMemberAction(member.user_id);
+    try {
+      const res = await fetch(`/api/account/members/${member.user_id}/access`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blocked }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        toast.error(payload.error || t('accessFailed'));
+        return;
+      }
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.user_id === member.user_id ? { ...m, blocked } : m,
+        ),
+      );
+      toast.success(
+        t(blocked ? 'blockedToast' : 'unblockedToast', {
+          name: member.full_name || t('unnamed'),
+        }),
+      );
+      setBlockingMember(null);
+    } catch (err) {
+      console.error('[MembersTab] access change error:', err);
       toast.error('Could not reach the server');
     } finally {
       setPendingMemberAction(null);
@@ -390,6 +473,11 @@ export function MembersTab() {
                             {t('you')}
                           </Badge>
                         )}
+                        {member.blocked && (
+                          <Badge className="border-red-500/40 bg-red-500/10 text-red-300 text-[10px] uppercase tracking-wide">
+                            {t('blockedBadge')}
+                          </Badge>
+                        )}
                       </div>
                       {member.email && (
                         <p className="truncate text-xs text-muted-foreground">
@@ -445,6 +533,62 @@ export function MembersTab() {
                         <RoleIcon className="size-3.5" />
                         {tRoles(member.role)}
                       </span>
+                    )}
+
+                    {/* Owner-only access tools (reset password / block).
+                        The server re-checks `owner`; this only hides the
+                        buttons. Never on the owner row or on yourself. */}
+                    {isOwner && !isOwnerRow && !isSelf && (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResetPassword(member)}
+                                disabled={isBusy}
+                                aria-label={t('resetPassword')}
+                              >
+                                <KeyRound className="size-4" />
+                              </Button>
+                            }
+                          />
+                          <TooltipContent>{t('resetPassword')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  member.blocked
+                                    ? handleSetBlocked(member, false)
+                                    : setBlockingMember(member)
+                                }
+                                disabled={isBusy}
+                                aria-label={
+                                  member.blocked
+                                    ? t('unblockAccess')
+                                    : t('blockAccess')
+                                }
+                              >
+                                {member.blocked ? (
+                                  <ShieldCheck className="size-4" />
+                                ) : (
+                                  <Ban className="size-4" />
+                                )}
+                              </Button>
+                            }
+                          />
+                          <TooltipContent>
+                            {member.blocked
+                              ? t('unblockAccess')
+                              : t('blockAccess')}
+                          </TooltipContent>
+                        </Tooltip>
+                      </>
                     )}
 
                     {/* Remove. Admin+ only; never on the owner row;
@@ -565,6 +709,106 @@ export function MembersTab() {
         onOpenChange={setInviteOpen}
         onCreated={loadEverything}
       />
+
+      {/* Recovery link — shown once to the owner. Closing drops it. */}
+      <Dialog
+        open={resetResult !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetResult(null);
+            setLinkCopied(false);
+          }
+        }}
+      >
+        <DialogContent className="bg-popover border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-popover-foreground">
+              <KeyRound className="size-4 text-primary" />
+              {t('resetDialogTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {t.rich('resetDialogDesc', {
+                name: resetResult?.member.full_name || t('unnamed'),
+                bold: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            readOnly
+            value={resetResult?.link ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full rounded-md border border-border bg-muted px-3 py-2 font-mono text-xs text-foreground"
+          />
+          <p className="flex items-start gap-2 text-xs text-amber-400">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            {t('resetDialogWarn')}
+          </p>
+          <DialogFooter className="bg-popover border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResetResult(null);
+                setLinkCopied(false);
+              }}
+              className="border-border text-muted-foreground hover:bg-muted"
+            >
+              {t('close')}
+            </Button>
+            <Button onClick={handleCopyLink}>
+              {linkCopied ? (
+                <Check className="size-4" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              {t('copyLink')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={blockingMember !== null}
+        onOpenChange={(open) => {
+          if (!open) setBlockingMember(null);
+        }}
+      >
+        <DialogContent className="bg-popover border-border sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-popover-foreground">
+              <Ban className="size-4 text-red-400" />
+              {t('blockDialogTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {t.rich('blockDialogDesc', {
+                name: blockingMember?.full_name || t('unnamed'),
+                bold: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="bg-popover border-border">
+            <Button
+              variant="outline"
+              onClick={() => setBlockingMember(null)}
+              className="border-border text-muted-foreground hover:bg-muted"
+            >
+              {t('cancel')}
+            </Button>
+            <Button
+              onClick={() =>
+                blockingMember && handleSetBlocked(blockingMember, true)
+              }
+              disabled={!!pendingMemberAction}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {pendingMemberAction ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                t('blockBtn')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={removingMember !== null}

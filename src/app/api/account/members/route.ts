@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentAccount, toErrorResponse } from "@/lib/auth/account";
+import { loadBlockedUserIds } from "@/lib/auth/member-access";
 import { canManageMembers, isAccountRole } from "@/lib/auth/roles";
 import type { AccountMember } from "@/types";
 
@@ -49,6 +50,13 @@ export async function GET() {
 
     const canSeeEmails = canManageMembers(ctx.role);
 
+    // Blocked state is the owner's business (it drives the owner-only
+    // reset / block controls); everyone else gets the roster unchanged.
+    const blockedIds =
+      ctx.role === "owner"
+        ? await loadBlockedUserIds((data as ProfileRow[]).map((r) => r.user_id))
+        : null;
+
     const members: AccountMember[] = (data as ProfileRow[]).flatMap((row) => {
       // Defensive: the DB enum should never let an unknown role
       // through, but if a migration ever broadens the enum without
@@ -62,6 +70,7 @@ export async function GET() {
           avatar_url: row.avatar_url,
           role: row.account_role,
           joined_at: row.created_at,
+          ...(blockedIds ? { blocked: blockedIds.has(row.user_id) } : {}),
         },
       ];
     });
