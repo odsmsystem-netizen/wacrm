@@ -113,6 +113,24 @@
       "tooltipOutgoing": "발신 {count}건",
       "ariaLabel": "일별 대화 수"
     },
+    "leadFunnel": {
+      "title": "대화 퍼널",
+      "description": "최근 {count}일: 판매가 이탈하는 지점",
+      "noData": "새 대화 없음",
+      "noDataHint": "새 대화가 들어오면 판매까지 이어진 수가 여기에 표시됩니다.",
+      "steps": {
+        "new": "새 대화",
+        "assigned": "상담원 배정",
+        "deals": "거래 생성",
+        "won": "거래 성사"
+      },
+      "hot": "핫 리드",
+      "warm": "웜 리드",
+      "cold": "콜드 리드",
+      "medianAssign": "배정까지 중앙값",
+      "minutes": "{count}분",
+      "note": "리드는 “Lead caliente”, “Lead tibio”, “Lead frío” 태그로 집계됩니다. 비율은 새 대화 기준입니다."
+    },
     "contactSources": {
       "title": "Where do contacts come from?",
       "description": "New conversations by channel and origin",
@@ -1031,7 +1049,9 @@
           "tag_presence": "태그 존재 여부",
           "contact_field": "연락처 필드",
           "message_content": "메시지 내용",
-          "time_of_day": "시간대"
+          "time_of_day": "시간대",
+          "conversation_unassigned": "대화가 아직 배정되지 않음",
+          "conversation_attended": "대화가 이미 응대됨"
         },
         "operandLabel": "피연산자",
         "placeholderTime": "HH:mm-HH:mm",

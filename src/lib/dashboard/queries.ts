@@ -8,8 +8,10 @@ import {
   mondayIndex,
   startOfLocalDay,
 } from './date-utils'
+import { medianMinutesToAssign } from './lead-funnel'
 import type {
   ActivityItem,
+  LeadFunnelData,
   ContactSourcesData,
   ConversationsSeriesPoint,
   MetricsBundle,
@@ -438,4 +440,74 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   return items
     .sort((a, b) => (a.at > b.at ? -1 : a.at < b.at ? 1 : 0))
     .slice(0, limit)
+}
+
+// --- 7. Embudo de conversación (owner/admin) ---------------------------
+//
+// Todo con conteos (head) salvo una consulta de dos fechas por
+// conversación asignada (máx. 1000 filas) para la mediana: evita traer
+// filas completas, por la restricción de egress de Supabase.
+
+const QUALIFICATION_TAGS = {
+  hot: 'Lead caliente',
+  warm: 'Lead tibio',
+  cold: 'Lead frío',
+} as const
+
+export async function loadLeadFunnel(
+  db: DB,
+  rangeDays: number,
+): Promise<LeadFunnelData> {
+  const start = daysAgoStart(rangeDays - 1).toISOString()
+  const convs = () =>
+    db
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', start)
+  const deals = () =>
+    db
+      .from('deals')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', start)
+  const tagged = (name: string) =>
+    db
+      .from('contact_tags')
+      .select('id, tags!inner(name)', { count: 'exact', head: true })
+      .gte('created_at', start)
+      .ilike('tags.name', name)
+
+  const [nuevas, asignadas, tratos, ganados, hot, warm, cold, tiempos] =
+    await Promise.all([
+      convs(),
+      convs().not('assigned_agent_id', 'is', null),
+      deals(),
+      deals().eq('status', 'won'),
+      tagged(QUALIFICATION_TAGS.hot),
+      tagged(QUALIFICATION_TAGS.warm),
+      tagged(QUALIFICATION_TAGS.cold),
+      db
+        .from('conversations')
+        .select('created_at, assigned_at')
+        .gte('created_at', start)
+        .not('assigned_at', 'is', null)
+        .limit(1000),
+    ])
+  for (const res of [nuevas, asignadas, tratos, ganados, hot, warm, cold, tiempos]) {
+    if (res.error) throw res.error
+  }
+
+  return {
+    newConversations: nuevas.count ?? 0,
+    assigned: asignadas.count ?? 0,
+    dealsCreated: tratos.count ?? 0,
+    dealsWon: ganados.count ?? 0,
+    qualification: {
+      hot: hot.count ?? 0,
+      warm: warm.count ?? 0,
+      cold: cold.count ?? 0,
+    },
+    medianMinutesToAssign: medianMinutesToAssign(
+      (tiempos.data ?? []) as { created_at: string | null; assigned_at: string | null }[],
+    ),
+  }
 }

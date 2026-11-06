@@ -1454,6 +1454,8 @@ function StepEditor({
               <option value="contact_field">{t("config.subjects.contact_field")}</option>
               <option value="message_content">{t("config.subjects.message_content")}</option>
               <option value="time_of_day">{t("config.subjects.time_of_day")}</option>
+              <option value="conversation_unassigned">{t("config.subjects.conversation_unassigned")}</option>
+              <option value="conversation_attended">{t("config.subjects.conversation_attended")}</option>
             </select>
           </FieldBlock>
           <FieldBlock label={t("config.operandLabel")}>

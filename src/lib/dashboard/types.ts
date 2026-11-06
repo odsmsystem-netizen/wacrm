@@ -77,3 +77,19 @@ export interface ActivityItem {
   /** Optional deep-link for the whole row (not all items have a target). */
   href?: string
 }
+
+/** Embudo de conversación de los últimos N días (solo owner/admin). */
+export interface LeadFunnelData {
+  /** Conversaciones nuevas del periodo. */
+  newConversations: number
+  /** De esas, las que ya tienen agente asignado. */
+  assigned: number
+  /** Tratos creados en el periodo. */
+  dealsCreated: number
+  /** Tratos ganados entre los creados en el periodo. */
+  dealsWon: number
+  /** Contactos etiquetados en el periodo por calificación. */
+  qualification: { hot: number; warm: number; cold: number }
+  /** Mediana de minutos entre que entra y se asigna; null sin datos. */
+  medianMinutesToAssign: number | null
+}

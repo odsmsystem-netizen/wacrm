@@ -113,6 +113,24 @@
       "tooltipOutgoing": "{count} outgoing",
       "ariaLabel": "Conversations per day"
     },
+    "leadFunnel": {
+      "title": "Conversation funnel",
+      "description": "Last {count} days: where sales drop off",
+      "noData": "No new conversations",
+      "noDataHint": "Once new conversations arrive you'll see how many reach a sale.",
+      "steps": {
+        "new": "New conversations",
+        "assigned": "Assigned to an agent",
+        "deals": "With a deal created",
+        "won": "Deals won"
+      },
+      "hot": "Hot leads",
+      "warm": "Warm leads",
+      "cold": "Cold leads",
+      "medianAssign": "Median time to assign",
+      "minutes": "{count} min",
+      "note": "Leads are counted by the tags “Lead caliente”, “Lead tibio” and “Lead frío”. Percentages are relative to new conversations."
+    },
     "contactSources": {
       "title": "Where do contacts come from?",
       "description": "New conversations by channel and origin",
@@ -1031,7 +1049,9 @@
           "tag_presence": "Tag presence",
           "contact_field": "Contact field",
           "message_content": "Message content",
-          "time_of_day": "Time of day"
+          "time_of_day": "Time of day",
+          "conversation_unassigned": "Conversation is still unassigned",
+          "conversation_attended": "Conversation was already attended"
         },
         "operandLabel": "Operand",
         "placeholderTime": "HH:mm-HH:mm",
