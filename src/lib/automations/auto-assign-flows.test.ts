@@ -153,10 +153,22 @@ function conversacion(over: Row = {}) {
 }
 
 function mensajes(...tipos: string[]) {
+  const ahora = new Date().toISOString();
   h.db.messages = tipos.map((sender_type, i) => ({
     id: `m${i}`,
     conversation_id: CONV,
     sender_type,
+    created_at: ahora,
+  }));
+}
+
+/** Mensajes con fecha explícita: [sender_type, ISO]. */
+function mensajesConFecha(...filas: [string, string][]) {
+  h.db.messages = filas.map(([sender_type, created_at], i) => ({
+    id: `m${i}`,
+    conversation_id: CONV,
+    sender_type,
+    created_at,
   }));
 }
 
@@ -298,6 +310,36 @@ describe("regla 2 — ya atendido y sin agente (new_message_received)", () => {
     expect(pendientes()).toBe(0);
     expect(asignado()).toBeNull();
     expect(h.sent).toHaveLength(0);
+  });
+
+  it("un mensaje 'agent' ANTERIOR a la fecha de corte (pudo ser de Claudia) no cuenta", async () => {
+    // Antes del cambio, Claudia se guardaba como 'agent': no se distingue de
+    // una persona, así que solo cuentan los mensajes posteriores al corte.
+    conversacion();
+    mensajesConFecha(
+      ["customer", "2026-10-01T10:00:00.000Z"],
+      ["agent", "2026-10-01T10:00:05.000Z"], // antiguo: Claudia o persona, no se sabe
+      ["customer", new Date().toISOString()],
+    );
+    await entra("new_message_received");
+    await pasaElTiempo();
+    expect(pendientes()).toBe(0);
+    expect(asignado()).toBeNull();
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it("un mensaje 'agent' POSTERIOR al corte sí cuenta como una persona", async () => {
+    conversacion();
+    mensajesConFecha(
+      ["customer", "2026-10-01T10:00:00.000Z"],
+      ["agent", new Date().toISOString()],
+      ["customer", new Date().toISOString()],
+    );
+    await entra("new_message_received");
+    expect(pendientes()).toBe(1);
+    await pasaElTiempo();
+    expect(asignado()).toBe("agent-ana");
+    expect(h.sent).toHaveLength(1);
   });
 
   it("sin atención previa: no hace nada (lo cubre la regla 1)", async () => {

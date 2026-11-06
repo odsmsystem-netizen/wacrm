@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AUTOMATION_TEMPLATES } from './templates';
+import { AUTOMATION_TEMPLATES, HUMAN_MESSAGES_SINCE } from './templates';
 import { validateStepsForActivation } from './validate';
 import { seedsToTree } from './steps-tree';
 
@@ -45,6 +45,8 @@ describe('plantilla auto_assign_attended_unassigned', () => {
       subject: 'conversation_attended',
       operand: 'agent',
     });
+    expect(t.steps[1].step_config).toMatchObject({ value: HUMAN_MESSAGES_SINCE });
+    expect(Number.isNaN(new Date(HUMAN_MESSAGES_SINCE).getTime())).toBe(false);
     expect(t.steps[2]).toMatchObject({
       step_type: 'wait',
       step_config: { amount: 3, unit: 'minutes' },

@@ -31,6 +31,14 @@ export interface AutomationTemplateDefinition {
   steps: TemplateStepSeed[]
 }
 
+/**
+ * Fecha desde la cual `sender_type = 'agent'` significa "una persona".
+ * Antes, los envíos por la API v1 (Claudia) también se guardaban como
+ * 'agent'; el cambio que los pasa a 'bot' quedó en producción el
+ * 2026-11-06 a las 18:29 UTC. Un margen después se fija el corte.
+ */
+export const HUMAN_MESSAGES_SINCE = '2026-11-06T18:30:00.000Z'
+
 export const AUTOMATION_TEMPLATES: Record<TemplateSlug, AutomationTemplateDefinition> = {
   welcome_message: {
     slug: 'welcome_message',
@@ -163,7 +171,11 @@ export const AUTOMATION_TEMPLATES: Record<TemplateSlug, AutomationTemplateDefini
       },
       {
         step_type: 'condition',
-        step_config: { subject: 'conversation_attended', operand: 'agent' },
+        step_config: {
+          subject: 'conversation_attended',
+          operand: 'agent',
+          value: HUMAN_MESSAGES_SINCE,
+        },
         parent_index: 0,
         branch: 'yes',
       },
