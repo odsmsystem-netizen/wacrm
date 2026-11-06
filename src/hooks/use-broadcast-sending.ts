@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import {
+  fetchAssignedContactIds,
+  isRestrictedOrUnknown,
+} from '@/lib/contacts/visibility';
+import {
   BATCH_SEND_ATTEMPTS,
   batchRetryDelayMs,
 } from '@/lib/broadcast-retry';
@@ -158,12 +162,23 @@ async function fetchCustomValueIndex(
 }
 
 export function useBroadcastSending(): UseBroadcastSendingReturn {
-  const { accountId } = useAuth();
+  const { accountId, accountRole, user: authUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
   async function resolveAudience(audience: AudienceConfig): Promise<Contact[]> {
     const supabase = createClient();
+
+    // agent/viewer solo pueden enviar a contactos con conversación asignada
+    // a ellos. Filtro de APLICACIÓN (ver lib/contacts/visibility.ts).
+    const restricted = isRestrictedOrUnknown(accountRole);
+    if (restricted && audience.type === 'csv') {
+      // Un CSV crea contactos nuevos que nadie tiene asignados, y apunta a
+      // teléfonos que pueden ser de otros agentes: no se permite.
+      throw new Error(
+        'Solo owner y admin pueden enviar difusiones por archivo CSV.',
+      );
+    }
 
     let contacts: Contact[] = [];
 
@@ -211,6 +226,13 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
         .in('tag_id', audience.excludeTagIds);
       const excludedIds = new Set((excludeRows ?? []).map((r) => r.contact_id));
       contacts = contacts.filter((c) => !excludedIds.has(c.id));
+    }
+
+    if (restricted) {
+      const mine = authUser
+        ? await fetchAssignedContactIds(supabase, authUser.id)
+        : new Set<string>();
+      contacts = contacts.filter((c) => mine.has(c.id));
     }
 
     return contacts;

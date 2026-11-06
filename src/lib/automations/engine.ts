@@ -821,11 +821,23 @@ async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): P
         .eq('contact_id', args.contactId)
         .maybeSingle()
       if (!conv) return false
-      const { count } = await db
+      let q = db
         .from('messages')
         .select('id', { count: 'exact', head: true })
         .eq('conversation_id', conv.id)
         .in('sender_type', cfg.operand === 'agent' ? ['agent'] : ['agent', 'bot'])
+      // `value` = fecha ISO de corte: solo cuentan los mensajes desde ahí.
+      // Existe porque los envíos por la API (Claudia) se guardaban como
+      // 'agent' ANTES de que pasaran a 'bot', y no hay forma de distinguir
+      // esos mensajes antiguos de los de una persona. Con una fecha de corte
+      // posterior a ese cambio, 'agent' = persona de verdad.
+      // Una fecha inválida falla cerrado: nada cuenta como atendido.
+      if (cfg.value) {
+        const since = new Date(cfg.value)
+        if (Number.isNaN(since.getTime())) return false
+        q = q.gte('created_at', since.toISOString())
+      }
+      const { count } = await q
       return (count ?? 0) > 0
     }
     case 'time_of_day': {
