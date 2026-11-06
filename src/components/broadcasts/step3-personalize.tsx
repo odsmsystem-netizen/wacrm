@@ -3,6 +3,8 @@
 import { contactDisplayName } from '@/lib/contacts/display-name';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
+import { isRestrictedOrUnknown } from '@/lib/contacts/visibility';
 import { Contact, CustomField, MessageTemplate } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +80,9 @@ export function Step3Personalize({
   onBack,
 }: Step3Props) {
   const t = useTranslations('Broadcasts.wizard');
+  const { accountRole, user } = useAuth();
+  const restricted = isRestrictedOrUnknown(accountRole);
+  const userId = user?.id ?? null;
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
   const [firstContact, setFirstContact] = useState<Contact | null>(null);
@@ -92,22 +97,30 @@ export function Step3Personalize({
     let cancelled = false;
     (async () => {
       const supabase = createClient();
+      // La vista previa usa un contacto real: para agent/viewer, uno de los
+      // asignados a ellos (nunca uno ajeno).
+      let contactQuery = supabase
+        .from('contacts')
+        .select(restricted ? '*, conversations!inner(assigned_agent_id)' : '*')
+        .eq('channel', 'whatsapp');
+      if (restricted && userId) {
+        contactQuery = contactQuery.eq('conversations.assigned_agent_id', userId);
+      }
       const [fieldsRes, contactRes] = await Promise.all([
         supabase.from('custom_fields').select('*').order('field_name'),
-        supabase
-          .from('contacts')
-          .select('*')
-          .eq('channel', 'whatsapp')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        restricted && !userId
+          ? Promise.resolve({ data: null })
+          : contactQuery
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
       ]);
       if (cancelled) return;
 
       setCustomFields(fieldsRes.data ?? []);
       setLoadingFields(false);
 
-      const contact = contactRes.data ?? null;
+      const contact = (contactRes.data ?? null) as unknown as Contact | null;
       setFirstContact(contact);
 
       if (contact) {
@@ -128,7 +141,7 @@ export function Step3Personalize({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [restricted, userId]);
 
   const placeholders = useMemo(() => {
     const matches = template.body_text.match(/\{\{(\d+)\}\}/g);

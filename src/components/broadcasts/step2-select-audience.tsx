@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
+import {
+  fetchAssignedContactIds,
+  isRestrictedOrUnknown,
+} from '@/lib/contacts/visibility';
 import { parseBroadcastCsv } from '@/lib/broadcast-csv';
 import { CustomField, Tag } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -50,6 +55,9 @@ export function Step2SelectAudience({
   onBack,
 }: Step2Props) {
   const t = useTranslations('Broadcasts.wizard');
+  const { accountRole, user } = useAuth();
+  const restricted = isRestrictedOrUnknown(accountRole);
+  const userId = user?.id ?? null;
 
   const OPERATOR_OPTIONS = useMemo<{ value: CustomFieldOperator; label: string }[]>(() => [
     { value: 'is', label: t('selectAudience.operatorIs') },
@@ -198,18 +206,40 @@ export function Step2SelectAudience({
         excludeSet = new Set((excludeRows ?? []).map((r) => r.contact_id));
       }
 
+      // agent/viewer: solo cuentan los contactos asignados a ellos.
+      const mine: Set<string> | null = restricted
+        ? userId
+          ? await fetchAssignedContactIds(supabase, userId)
+          : new Set<string>()
+        : null;
+
       if (baseIds) {
         const effective = [...baseIds].filter(
-          (id) => !excludeSet?.has(id),
+          (id) => !excludeSet?.has(id) && (!mine || mine.has(id)),
         );
         setEstimatedCount(effective.length);
       } else {
         // "All" — fetch the total, then subtract exclude set if any.
-        const { count } = await supabase
-          .from('contacts')
-          .select('*', { count: 'exact', head: true })
-          .eq('channel', 'whatsapp');
-        const total = count ?? 0;
+        let total = 0;
+        if (mine) {
+          const { count } = userId
+            ? await supabase
+                .from('contacts')
+                .select('id, conversations!inner(assigned_agent_id)', {
+                  count: 'exact',
+                  head: true,
+                })
+                .eq('channel', 'whatsapp')
+                .eq('conversations.assigned_agent_id', userId)
+            : { count: 0 };
+          total = count ?? 0;
+        } else {
+          const { count } = await supabase
+            .from('contacts')
+            .select('*', { count: 'exact', head: true })
+            .eq('channel', 'whatsapp');
+          total = count ?? 0;
+        }
         setEstimatedCount(excludeSet ? Math.max(0, total - excludeSet.size) : total);
       }
     } finally {
@@ -221,6 +251,8 @@ export function Step2SelectAudience({
     audience.customField,
     audience.csvContacts,
     audience.excludeTagIds,
+    restricted,
+    userId,
   ]);
 
   useEffect(() => {
@@ -296,7 +328,9 @@ export function Step2SelectAudience({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {audienceOptions.map((option: { type: AudienceType; label: string; description: string; icon: typeof Users }) => {
+        {audienceOptions
+          .filter((o) => !(restricted && o.type === 'csv'))
+          .map((option: { type: AudienceType; label: string; description: string; icon: typeof Users }) => {
           const isSelected = audience.type === option.type;
           const Icon = option.icon;
           return (

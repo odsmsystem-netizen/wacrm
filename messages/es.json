@@ -393,6 +393,7 @@
       "deleteBulkTitle": "Eliminar contactos",
       "deleteBulkDesc": "¿Seguro que quieres eliminar los {count} contactos seleccionados? Esta acción no se puede deshacer.",
       "toastFailedLoad": "No se pudieron cargar los contactos",
+      "toastNoAccess": "No tienes acceso a este contacto",
       "toastFailedDelete": "No se pudo eliminar el contacto",
       "toastDeleted": "Contacto eliminado",
       "toastBulkFailedDelete": "No se pudieron eliminar los contactos",

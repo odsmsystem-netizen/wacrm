@@ -41,3 +41,29 @@ export async function fetchAssignedContactIds(
   }
   return ids;
 }
+
+/**
+ * ¿Tiene `userId` una conversación asignada con este contacto?
+ * Falla cerrado: un error de consulta cuenta como "no".
+ */
+export async function canViewContact(
+  supabase: SupabaseClient,
+  userId: string,
+  contactId: string,
+): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('conversations')
+    .select('id', { count: 'exact', head: true })
+    .eq('contact_id', contactId)
+    .eq('assigned_agent_id', userId);
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+/**
+ * Rol restringido, o rol aún desconocido: ante la duda se restringe, para no
+ * mostrar ni usar contactos ajenos mientras se resuelve el rol.
+ */
+export function isRestrictedOrUnknown(role: AccountRole | null): boolean {
+  return role === null || restrictsContactsToAssigned(role);
+}

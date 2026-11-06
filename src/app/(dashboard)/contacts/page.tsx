@@ -58,7 +58,9 @@ import { CustomFieldsManager } from '@/components/contacts/custom-fields-manager
 import { useCan } from '@/hooks/use-can';
 import { useAuth } from '@/hooks/use-auth';
 import {
+  canViewContact,
   fetchAssignedContactIds,
+  isRestrictedOrUnknown,
   restrictsContactsToAssigned,
 } from '@/lib/contacts/visibility';
 import { GatedButton } from '@/components/ui/gated-button';
@@ -269,7 +271,20 @@ export default function ContactsPage() {
     setFormOpen(true);
   }
 
-  function openDetail(contactId: string) {
+  // Entrada única al detalle: lo abren la lista y "ver existente" (duplicado
+  // al crear un contacto). Un agente solo puede abrir contactos con una
+  // conversación asignada a él; sin esta comprobación, "ver existente" le
+  // abría el contacto de cualquier otro agente por su teléfono.
+  async function openDetail(contactId: string) {
+    if (isRestrictedOrUnknown(accountRole)) {
+      const permitido = userId
+        ? await canViewContact(supabase, userId, contactId)
+        : false;
+      if (!permitido) {
+        toast.error(t('toastNoAccess'));
+        return;
+      }
+    }
     setDetailContactId(contactId);
     setDetailOpen(true);
   }
