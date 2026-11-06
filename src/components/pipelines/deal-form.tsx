@@ -5,6 +5,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  fetchAssignedContactIds,
+  restrictsContactsToAssigned,
+} from "@/lib/contacts/visibility";
 import { CURRENCIES } from "@/lib/currency";
 import type {
   Contact,
@@ -56,7 +60,9 @@ export function DealForm({
 }: DealFormProps) {
   const t = useTranslations("Pipelines.form");
   const supabase = createClient();
-  const { accountId, defaultCurrency } = useAuth();
+  const { accountId, defaultCurrency, accountRole, user } = useAuth();
+  const onlyAssigned = restrictsContactsToAssigned(accountRole);
+  const userId = user?.id ?? null;
 
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
@@ -111,6 +117,9 @@ export function DealForm({
   // Load supporting data once the sheet is open
   useEffect(() => {
     if (!open) return;
+    // Sin rol conocido no se carga nada: evita mostrar todos los contactos
+    // a un agente mientras se resuelve su rol.
+    if (accountRole === null) return;
     let cancelled = false;
     (async () => {
       const [c, p] = await Promise.all([
@@ -118,13 +127,22 @@ export function DealForm({
         supabase.from("profiles").select("*").order("full_name"),
       ]);
       if (cancelled) return;
-      setContacts((c.data ?? []) as Contact[]);
+      let list = (c.data ?? []) as Contact[];
+      if (onlyAssigned) {
+        // Falla cerrado: sin sesión, un agente no recibe ningún contacto.
+        const mine = userId
+          ? await fetchAssignedContactIds(supabase, userId)
+          : new Set<string>();
+        if (cancelled) return;
+        list = list.filter((x) => mine.has(x.id));
+      }
+      setContacts(list);
       setProfiles((p.data ?? []) as Profile[]);
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, supabase]);
+  }, [open, supabase, onlyAssigned, userId, accountRole]);
 
   // Fetch linked conversation for the selected contact (newest open one).
   // Clearing on no-selection is sync with prop state; the populated
