@@ -88,6 +88,14 @@ export interface SendMessageParams {
   /** Structured payload for `messageType === 'interactive'`. */
   interactivePayload?: InteractiveMessagePayload | null;
   replyToMessageId?: string | null;
+  /**
+   * Quién queda como autor en `messages.sender_type`. 'agent' (por defecto)
+   * = una persona desde la bandeja. 'bot' = un envío automático (API v1:
+   * Claudia y demás integraciones). Las reglas de asignación automática
+   * miran este valor para distinguir "le contestó una persona" de "le
+   * contestó un bot".
+   */
+  senderType?: 'agent' | 'bot';
 }
 
 export interface SendMessageResult {
@@ -201,6 +209,7 @@ export async function sendMessageToConversation(
     templateMessageParams,
     interactivePayload,
     replyToMessageId,
+    senderType = 'agent',
   } = params;
 
   if (!conversationId) {
@@ -484,7 +493,7 @@ export async function sendMessageToConversation(
     .from('messages')
     .insert({
       conversation_id: conversationId,
-      sender_type: 'agent',
+      sender_type: senderType,
       content_type: messageType,
       content_text: persistedText,
       media_url: mediaUrl || null,

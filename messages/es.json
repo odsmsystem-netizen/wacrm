@@ -113,6 +113,24 @@
       "tooltipOutgoing": "{count} salientes",
       "ariaLabel": "Conversaciones por día"
     },
+    "leadFunnel": {
+      "title": "Embudo de conversaciones",
+      "description": "Últimos {count} días: dónde se caen las ventas",
+      "noData": "Sin conversaciones nuevas",
+      "noDataHint": "Cuando entren conversaciones nuevas verás aquí cuántas llegan a venta.",
+      "steps": {
+        "new": "Conversaciones nuevas",
+        "assigned": "Asignadas a un agente",
+        "deals": "Con trato creado",
+        "won": "Tratos ganados"
+      },
+      "hot": "Leads calientes",
+      "warm": "Leads tibios",
+      "cold": "Leads fríos",
+      "medianAssign": "Mediana hasta asignar",
+      "minutes": "{count} min",
+      "note": "Los leads se cuentan por las etiquetas «Lead caliente», «Lead tibio» y «Lead frío». Los porcentajes son sobre las conversaciones nuevas."
+    },
     "contactSources": {
       "title": "¿Por dónde nos contactan?",
       "description": "Conversaciones nuevas por canal y origen",
@@ -1031,7 +1049,9 @@
           "tag_presence": "Presencia de etiqueta",
           "contact_field": "Campo de contacto",
           "message_content": "Contenido del mensaje",
-          "time_of_day": "Hora del día"
+          "time_of_day": "Hora del día",
+          "conversation_unassigned": "La conversación sigue sin asignar",
+          "conversation_attended": "La conversación ya fue atendida"
         },
         "operandLabel": "Operando",
         "placeholderTime": "HH:mm-HH:mm",

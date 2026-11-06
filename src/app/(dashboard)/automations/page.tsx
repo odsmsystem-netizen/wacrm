@@ -49,6 +49,9 @@ const TEMPLATE_ORDER: TemplateSlug[] = [
   "out_of_office",
   "lead_qualifier",
   "follow_up_reminder",
+  "auto_assign_unattended",
+  "auto_assign_attended_unassigned",
+  "auto_assign_hot_lead",
 ]
 
 const TEMPLATE_ICON: Record<TemplateSlug, typeof Zap> = {
@@ -56,6 +59,9 @@ const TEMPLATE_ICON: Record<TemplateSlug, typeof Zap> = {
   out_of_office: Clock,
   lead_qualifier: Users,
   follow_up_reminder: PhoneCall,
+  auto_assign_unattended: Users,
+  auto_assign_attended_unassigned: Users,
+  auto_assign_hot_lead: Users,
 }
 
 export default function AutomationsPage() {

@@ -15,6 +15,7 @@ import {
   loadActivity,
   loadContactSources,
   loadConversationsSeries,
+  loadLeadFunnel,
   loadMetrics,
   loadPipelineDonut,
   loadResponseTime,
@@ -23,6 +24,7 @@ import type {
   ActivityItem,
   ContactSourcesData,
   ConversationsSeriesPoint,
+  LeadFunnelData,
   MetricsBundle,
   PipelineDonutData,
   ResponseTimeSummary,
@@ -32,6 +34,7 @@ import { MetricCard } from '@/components/dashboard/metric-card'
 import { SkeletonCard } from '@/components/dashboard/skeleton'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
+import { LeadFunnelCard } from '@/components/dashboard/lead-funnel-card'
 import { ContactSourcesCard } from '@/components/dashboard/contact-sources-card'
 import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
@@ -43,7 +46,7 @@ type RangeDays = 7 | 30 | 90
 
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
-  const { defaultCurrency } = useAuth()
+  const { defaultCurrency, canManageMembers } = useAuth()
   const [metrics, setMetrics] = useState<MetricsBundle | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
 
@@ -67,6 +70,11 @@ export default function DashboardPage() {
     90: null,
   })
   const [sourcesLoading, setSourcesLoading] = useState(true)
+
+  // Embudo: solo owner/admin (agent/viewer solo ven lo asignado a ellos).
+  const FUNNEL_DAYS = 30
+  const [funnel, setFunnel] = useState<LeadFunnelData | null>(null)
+  const [funnelLoading, setFunnelLoading] = useState(true)
 
   const [pipeline, setPipeline] = useState<PipelineDonutData | null>(null)
   const [pipelineLoading, setPipelineLoading] = useState(true)
@@ -120,6 +128,25 @@ export default function DashboardPage() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  // El embudo va en su propio efecto: depende del rol, y meterlo en
+  // `loadAll` relanzaba TODAS las consultas del tablero al conocerse el rol
+  // (doble egress en cada carga). Solo owner/admin lo piden.
+  useEffect(() => {
+    if (!canManageMembers) return
+    let cancelled = false
+    void loadLeadFunnel(createClient(), FUNNEL_DAYS)
+      .then((f) => {
+        if (!cancelled) setFunnel(f)
+      })
+      .catch((err) => console.error('[dashboard] lead funnel failed:', err))
+      .finally(() => {
+        if (!cancelled) setFunnelLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageMembers])
 
   // Range switch handler — kept in an event callback (not an effect)
   // so the setState calls stay out of the react-hooks/set-state-in-effect
@@ -247,6 +274,11 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Embudo: dónde se caen las ventas (owner/admin) */}
+      {canManageMembers && (
+        <LeadFunnelCard data={funnel} loading={funnelLoading} days={FUNNEL_DAYS} />
+      )}
 
       {/* Por dónde nos contactan */}
       <ContactSourcesCard

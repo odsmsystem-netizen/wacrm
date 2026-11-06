@@ -124,6 +124,10 @@ export async function POST(request: Request) {
           typeof body.reply_to_message_id === 'string'
             ? body.reply_to_message_id
             : null,
+        // Todo lo que entra por la API pública es un envío automático
+        // (Claudia, integraciones): no debe contar como que una persona
+        // atendió la conversación.
+        senderType: 'bot',
       }
     );
 

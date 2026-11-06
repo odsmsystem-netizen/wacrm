@@ -518,6 +518,17 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
         })
         .eq('account_id', args.automation.account_id)
         .eq('contact_id', args.contactId)
+      // Deja el nombre disponible para pasos siguientes: {{ vars.agent_name }}.
+      const { data: agentProfile } = await db
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', agentId)
+        .eq('account_id', args.automation.account_id)
+        .maybeSingle()
+      args.context.vars = {
+        ...(args.context.vars ?? {}),
+        agent_name: (agentProfile?.full_name as string | null) ?? '',
+      }
       return `assigned to ${agentId}`
     }
 
@@ -781,6 +792,41 @@ async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): P
     case 'message_content': {
       const text = (args.context.message_text ?? '').toString()
       return text.toLowerCase().includes((cfg.value ?? '').toLowerCase())
+    }
+    case 'conversation_unassigned': {
+      // Falla cerrado: sin contacto o sin conversación no hay nada que
+      // asignar, así que la rama "sí" (que asigna) no debe ejecutarse.
+      if (!args.contactId) return false
+      const { data } = await db
+        .from('conversations')
+        .select('assigned_agent_id')
+        .eq('account_id', args.automation.account_id)
+        .eq('contact_id', args.contactId)
+        .maybeSingle()
+      return !!data && data.assigned_agent_id == null
+    }
+    case 'conversation_attended': {
+      // "Atendida" = ya hay al menos un mensaje saliente.
+      //   - sin operand: de un agente o de un bot (automatizaciones, flujos,
+      //     API v1/Claudia).
+      //   - operand 'agent': solo una PERSONA desde la bandeja
+      //     (sender_type='agent'). Los envíos por la API v1 se guardan como
+      //     'bot' (send-message.ts), así que Claudia no cuenta.
+      // Falla cerrado: sin contacto o sin conversación, no.
+      if (!args.contactId) return false
+      const { data: conv } = await db
+        .from('conversations')
+        .select('id')
+        .eq('account_id', args.automation.account_id)
+        .eq('contact_id', args.contactId)
+        .maybeSingle()
+      if (!conv) return false
+      const { count } = await db
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conv.id)
+        .in('sender_type', cfg.operand === 'agent' ? ['agent'] : ['agent', 'bot'])
+      return (count ?? 0) > 0
     }
     case 'time_of_day': {
       // operand form "HH:mm-HH:mm" — true if now is within that window

@@ -346,3 +346,26 @@ describe('sendMessageToConversation — template persistence (#483)', () => {
     expect(captured.conversation?.last_message_text).toBe('[template]');
   });
 });
+
+describe('sendMessageToConversation — autor del mensaje (sender_type)', () => {
+  it("guarda 'agent' por defecto (una persona desde la bandeja)", async () => {
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'hola',
+    });
+    expect(captured.message?.sender_type).toBe('agent');
+  });
+
+  it("guarda 'bot' cuando el envío es automático (API v1)", async () => {
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'hola',
+      senderType: 'bot',
+    });
+    expect(captured.message?.sender_type).toBe('bot');
+  });
+});

@@ -592,7 +592,11 @@ export type ConditionSubject =
   | 'contact_field'
   | 'tag_presence'
   | 'message_content'
-  | 'time_of_day';
+  | 'time_of_day'
+  /** La conversación del contacto sigue sin agente asignado. */
+  | 'conversation_unassigned'
+  /** Algún agente o el bot ya respondió en la conversación. */
+  | 'conversation_attended';
 
 export interface ConditionStepConfig {
   subject: ConditionSubject;

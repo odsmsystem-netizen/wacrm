@@ -56,6 +56,11 @@ import { ContactDetailView } from '@/components/contacts/contact-detail-view';
 import { ImportModal } from '@/components/contacts/import-modal';
 import { CustomFieldsManager } from '@/components/contacts/custom-fields-manager';
 import { useCan } from '@/hooks/use-can';
+import { useAuth } from '@/hooks/use-auth';
+import {
+  fetchAssignedContactIds,
+  restrictsContactsToAssigned,
+} from '@/lib/contacts/visibility';
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
 
@@ -70,6 +75,10 @@ export default function ContactsPage() {
   const supabase = createClient();
   const canEdit = useCan('send-messages');
   const canEditSettings = useCan('edit-settings');
+  const { user, accountRole } = useAuth();
+  // agent/viewer: solo contactos con conversación asignada a ellos.
+  const onlyAssigned = restrictsContactsToAssigned(accountRole);
+  const userId = user?.id ?? null;
 
   const [contacts, setContacts] = useState<ContactWithTags[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +136,11 @@ export default function ContactsPage() {
     // act on rows the user can no longer see.
     setSelected(new Set());
 
+    // Sin rol conocido no se consulta: un agente haría primero una
+    // consulta SIN filtro y vería todos los contactos un instante.
+    if (accountRole === null) return;
+    if (onlyAssigned && !userId) return; // esperando la sesión
+
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
     const term = search.trim();
@@ -154,12 +168,27 @@ export default function ContactsPage() {
       const rows = (data ?? []) as { contact: Contact; total_count: number }[];
       contactRows = rows.map((r) => r.contact);
       count = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      if (onlyAssigned && userId) {
+        // La RPC no sabe de asignaciones: se filtra la página después.
+        // El total y la paginación son aproximados para agentes con etiquetas.
+        const mine = await fetchAssignedContactIds(supabase, userId);
+        if (seq !== fetchSeq.current) return;
+        contactRows = contactRows.filter((c) => mine.has(c.id));
+        count = contactRows.length;
+      }
     } else {
       let query = supabase
         .from('contacts')
-        .select('*', { count: 'exact' })
+        .select(
+          onlyAssigned ? '*, conversations!inner(assigned_agent_id)' : '*',
+          { count: 'exact' },
+        )
         .order('created_at', { ascending: false })
         .range(from, to);
+
+      if (onlyAssigned && userId) {
+        query = query.eq('conversations.assigned_agent_id', userId);
+      }
 
       if (term) {
         const like = `%${term}%`;
@@ -173,7 +202,7 @@ export default function ContactsPage() {
         setLoading(false);
         return;
       }
-      contactRows = data ?? [];
+      contactRows = (data ?? []) as unknown as Contact[];
       count = exactCount ?? 0;
     }
 
@@ -208,7 +237,7 @@ export default function ContactsPage() {
 
     setContacts(enriched);
     setLoading(false);
-  }, [supabase, page, search, selectedTagIds, tagsMap, t]);
+  }, [supabase, page, search, selectedTagIds, tagsMap, t, onlyAssigned, userId, accountRole]);
 
   // Load-once-on-mount-ish data fetches. Each setter inside runs
   // inside an async promise completion (Supabase await), not

@@ -10,6 +10,9 @@ export type TemplateSlug =
   | 'out_of_office'
   | 'lead_qualifier'
   | 'follow_up_reminder'
+  | 'auto_assign_unattended'
+  | 'auto_assign_attended_unassigned'
+  | 'auto_assign_hot_lead'
 
 export interface TemplateStepSeed {
   step_type: AutomationStepType
@@ -102,6 +105,125 @@ export const AUTOMATION_TEMPLATES: Record<TemplateSlug, AutomationTemplateDefini
       {
         step_type: 'assign_conversation',
         step_config: { mode: 'round_robin' },
+      },
+    ],
+  },
+  auto_assign_unattended: {
+    slug: 'auto_assign_unattended',
+    name: 'Asignar si nadie atiende en 3 min',
+    description:
+      'Si a los 3 minutos ninguna persona del equipo le ha escrito al contacto y su conversación sigue sin agente, la asigna por turnos y le envía la bienvenida con el nombre del agente. Los mensajes de Claudia no cuentan como atención. Si una persona ya le escribió, no hace nada.',
+    trigger_type: 'first_inbound_message',
+    trigger_config: {},
+    steps: [
+      {
+        step_type: 'wait',
+        step_config: { amount: 3, unit: 'minutes' },
+      },
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_unassigned' },
+      },
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_attended', operand: 'agent' },
+        parent_index: 1,
+        branch: 'yes',
+      },
+      {
+        step_type: 'assign_conversation',
+        step_config: { mode: 'round_robin' },
+        parent_index: 2,
+        branch: 'no',
+      },
+      {
+        step_type: 'send_message',
+        step_config: {
+          text:
+            '¡Hola! Gracias por escribirnos. Un agente se pondrá en contacto con usted: {{ vars.agent_name }}.',
+        },
+        parent_index: 2,
+        branch: 'no',
+      },
+    ],
+  },
+  auto_assign_attended_unassigned: {
+    slug: 'auto_assign_attended_unassigned',
+    name: 'Asignar contacto ya atendido sin agente (3 min)',
+    description:
+      'Si una persona del equipo ya le escribió al contacto pero su conversación sigue sin agente, a los 3 minutos la asigna por turnos y solo le avisa el nombre del agente. Los mensajes de Claudia no cuentan como atención.',
+    trigger_type: 'new_message_received',
+    trigger_config: {},
+    steps: [
+      // Primero lo barato: si ya tiene agente (lo normal en casi todos los
+      // mensajes), no se programa ninguna espera.
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_unassigned' },
+      },
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_attended', operand: 'agent' },
+        parent_index: 0,
+        branch: 'yes',
+      },
+      {
+        step_type: 'wait',
+        step_config: { amount: 3, unit: 'minutes' },
+        parent_index: 1,
+        branch: 'yes',
+      },
+      // Se vuelve a revisar al despertar: en 3 minutos alguien pudo asignarla.
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_unassigned' },
+        parent_index: 1,
+        branch: 'yes',
+      },
+      {
+        step_type: 'assign_conversation',
+        step_config: { mode: 'round_robin' },
+        parent_index: 3,
+        branch: 'yes',
+      },
+      {
+        step_type: 'send_message',
+        step_config: {
+          text:
+            'Le hemos asignado a un agente: {{ vars.agent_name }}. Se pondrá en contacto con usted.',
+        },
+        parent_index: 3,
+        branch: 'yes',
+      },
+    ],
+  },
+  auto_assign_hot_lead: {
+    slug: 'auto_assign_hot_lead',
+    name: 'Asignar lead caliente de inmediato',
+    description:
+      'Cuando un contacto recibe la etiqueta de lead caliente (elige cuál) y su conversación no tiene agente, la asigna por turnos al instante y le avisa el nombre del agente.',
+    trigger_type: 'tag_added',
+    // El tag_id se elige al activarla: el id de la etiqueta es de cada cuenta.
+    trigger_config: { tag_id: '' },
+    steps: [
+      {
+        step_type: 'condition',
+        step_config: { subject: 'conversation_unassigned' },
+      },
+      {
+        step_type: 'assign_conversation',
+        step_config: { mode: 'round_robin' },
+        parent_index: 0,
+        branch: 'yes',
+      },
+      {
+        step_type: 'send_message',
+        step_config: {
+          text:
+            'Gracias por la información. Le atenderá personalmente un agente: {{ vars.agent_name }}.',
+        },
+        parent_index: 0,
+        branch: 'yes',
       },
     ],
   },
