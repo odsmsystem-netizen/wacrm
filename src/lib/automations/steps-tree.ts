@@ -87,7 +87,7 @@ export async function insertSteps(
   return error?.message ?? null
 }
 
-function seedsToTree(seeds: BuilderStepInput[]): BuilderStepInput[] {
+export function seedsToTree(seeds: BuilderStepInput[]): BuilderStepInput[] {
   const nodes: BuilderStepInput[] = seeds.map((s) => ({
     ...s,
     branches: { yes: [], no: [] },

@@ -27,6 +27,9 @@ interface StepLike {
   branches?: { yes?: StepLike[]; no?: StepLike[] }
 }
 
+/** Condiciones que no necesitan operando. */
+const NO_OPERAND_SUBJECTS = new Set(['conversation_unassigned', 'conversation_attended'])
+
 export function validateStepsForActivation(steps: StepLike[]): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   if (!Array.isArray(steps) || steps.length === 0) {
@@ -122,7 +125,12 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
       if (!nonEmpty(c.subject)) {
         issues.push({ path: `${path}.subject`, message: 'condition subject is required' })
       }
-      if (!nonEmpty(c.operand)) {
+      // Estas condiciones se evalúan solas contra la conversación: no llevan
+      // operando (en `conversation_attended` es opcional: 'agent').
+      if (
+        !NO_OPERAND_SUBJECTS.has(String(c.subject)) &&
+        !nonEmpty(c.operand)
+      ) {
         issues.push({ path: `${path}.operand`, message: 'condition operand is required' })
       }
       break
