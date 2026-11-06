@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { AUTOMATION_TEMPLATES } from './templates';
+import { validateStepsForActivation } from './validate';
+import { seedsToTree } from './steps-tree';
 
 describe('plantilla auto_assign_unattended', () => {
   const t = AUTOMATION_TEMPLATES.auto_assign_unattended;
@@ -74,5 +76,30 @@ describe('plantilla auto_assign_hot_lead', () => {
     expect(t.steps[1]).toMatchObject({ step_type: 'assign_conversation', parent_index: 0, branch: 'yes' });
     const msg = t.steps[2].step_config as { text: string };
     expect(msg.text).toContain('{{ vars.agent_name }}');
+  });
+});
+
+describe('todas las plantillas pasan la validación de activación', () => {
+  // Lo que el CRM exige al guardar una automatización activa. Esta prueba
+  // faltaba: el constructor rechazaba las condiciones nuevas por no llevar
+  // operando y ninguna otra prueba lo detectó.
+  const slugs = [
+    'auto_assign_unattended',
+    'auto_assign_attended_unassigned',
+    'auto_assign_hot_lead',
+  ] as const;
+
+  for (const slug of slugs) {
+    it(`${slug}: sus pasos son válidos`, () => {
+      const tree = seedsToTree(AUTOMATION_TEMPLATES[slug].steps as never);
+      expect(validateStepsForActivation(tree as never)).toEqual([]);
+    });
+  }
+
+  it('una condición sin operando sigue rechazándose cuando sí lo necesita', () => {
+    const issues = validateStepsForActivation([
+      { step_type: 'condition', step_config: { subject: 'tag_presence' } },
+    ]);
+    expect(issues.map((i) => i.path)).toEqual(['steps[0].operand']);
   });
 });
